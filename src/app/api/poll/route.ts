@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
-import { db } from "@/db";
-import { articles } from "@/db/schema";
-import { fetchHackerNews } from "@/lib/sources/hackernews";
+import { ingestHackerNews } from "@/lib/ingest";
 
 /**
  * Phase 2 ingest job. Fetches one source (Hacker News), normalizes, and stores
@@ -26,6 +24,7 @@ function authorized(req: NextRequest): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+// Phase 2 ingest job. Fetches one source (Hacker News), normalizes, and stores — then `GET /api/feed` to read it back.
 export async function POST(req: NextRequest) {
   if (!process.env.POLL_SECRET) {
     return NextResponse.json(
@@ -38,28 +37,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const items = await fetchHackerNews();
-    const fetched = items.length;
-
-    if (fetched === 0) {
-      return NextResponse.json({ ok: true, source: "hackernews", fetched: 0, inserted: 0, skipped: 0 });
-    }
-
-    // Only new canonical URLs land; existing ones are silently skipped.
-    const insertedRows = await db
-      .insert(articles)
-      .values(items)
-      .onConflictDoNothing({ target: articles.canonicalUrl })
-      .returning({ id: articles.id });
-
-    const inserted = insertedRows.length;
-    return NextResponse.json({
-      ok: true,
-      source: "hackernews",
-      fetched,
-      inserted,
-      skipped: fetched - inserted,
-    });
+    const result = await ingestHackerNews();
+    return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     return NextResponse.json(
       { ok: false, error: err instanceof Error ? err.message : String(err) },

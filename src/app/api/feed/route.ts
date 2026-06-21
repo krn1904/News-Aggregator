@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { desc, sql } from "drizzle-orm";
-import { db } from "@/db";
-import { articles } from "@/db/schema";
+import { clampLimit, getFeed } from "@/lib/feed";
 
 /**
  * Phase 2 read-back. Returns stored articles newest-first. No personalization
@@ -12,29 +10,11 @@ import { articles } from "@/db/schema";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const DEFAULT_LIMIT = 50;
-const MAX_LIMIT = 100;
-
 export async function GET(req: NextRequest) {
-  const raw = Number(req.nextUrl.searchParams.get("limit"));
-  const limit = Number.isFinite(raw) && raw > 0 ? Math.min(raw, MAX_LIMIT) : DEFAULT_LIMIT;
+  const limit = clampLimit(req.nextUrl.searchParams.get("limit"));
 
   try {
-    const rows = await db
-      .select({
-        id: articles.id,
-        source: articles.source,
-        title: articles.title,
-        canonicalUrl: articles.canonicalUrl,
-        summary: articles.summary,
-        publishedAt: articles.publishedAt,
-        fetchedAt: articles.fetchedAt,
-      })
-      .from(articles)
-      // Newest published first; nulls last, then by fetch time as a tiebreaker.
-      .orderBy(sql`${articles.publishedAt} DESC NULLS LAST`, desc(articles.fetchedAt))
-      .limit(limit);
-
+    const rows = await getFeed(limit);
     return NextResponse.json({ ok: true, count: rows.length, articles: rows });
   } catch (err) {
     return NextResponse.json(
