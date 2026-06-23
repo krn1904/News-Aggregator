@@ -20,7 +20,7 @@ Phases are reconstructed from the schema comments in `src/db/schema.ts` (the ori
 | 3     | Scheduled polling (GitHub Actions cron)         | ✅ done |
 | 4     | Multi-source ingestion (RSS news feeds)         | ✅ done |
 | 5     | Clustering (dedup same story across sources)    | ✅ done |
-| 6     | Tagging — keyword seeds + AI growing vocab      | ⬜ next |
+| 6     | Tagging — keyword seeds + AI growing vocab      | ✅ done |
 | 7     | Voting → `topic_interest` learning loop         | ⬜      |
 | 8     | Personalized ranking in `/api/feed`             | ⬜      |
 | 9     | On-demand enrichment (`body` / `detailSummary`) | ⬜      |
@@ -143,7 +143,7 @@ Group the same story carried by multiple sources into one `cluster`.
 
 ---
 
-## Phase 6 — Tagging (keyword seeds + AI growing vocabulary) ⬜ (NEXT)
+## Phase 6 — Tagging (keyword seeds + AI growing vocabulary) ✅ (DONE)
 
 Tag each article with topics so the vote loop (Phase 7) and ranking (Phase 8) have signal.
 Runs in the write path after insert, idempotent (only tags articles with no tags yet).
@@ -151,14 +151,15 @@ Tags table is `(articleId, topic, score)`, PK `(articleId, topic)` — append-on
 are a shared, **growing** vocabulary (free text, so new topics are first-class with no schema change).
 
 **Two-tier engine (decided with Krn):**
-- [ ] **Seed taxonomy** — broad buckets (technology, politics, business, sport, world…) + interest
-      topics (immigration, australia, india, markets, jobs), each a keyword list. Keyword-matched
-      against tokenized `title` (weighted) + `summary`. Free, instant, deterministic.
-- [ ] **AI fallback for the open vocabulary** — for articles that don't confidently match a seed,
-      call an LLM with the article's *natural* title+summary **and the current distinct-tag list**;
-      it reuses a fitting existing tag or coins a new kebab-case one. This is what lets the feed grow
-      toward new interests (an untagged story can never be learned from).
-- [ ] Write `tags` rows `(articleId, topic, score)`.
+- [x] **Seed taxonomy** (`src/lib/tags/taxonomy.ts` + `keyword.ts`) — broad buckets + interest topics,
+      each a keyword list; word-boundary matched against `title` (weighted ×2) + `summary`. Free, instant.
+- [x] **AI fallback** (`src/lib/tags/ai.ts`, Gemini) — only for articles the keywords didn't match;
+      batched (12/call), passed the article + current distinct-tag list, reuses or coins a kebab tag.
+      Graceful: no key / error → article stays untagged, retried next poll. Never throws.
+- [x] **Orchestrator** (`src/lib/tags/index.ts` `tagUntagged()`) — keyword-first, AI for the rest
+      (capped 48/run), inserts `tags` rows `(articleId, topic, score)` with ON CONFLICT DO NOTHING.
+- [x] Wired into `ingestAllSources()` after clustering (non-fatal); poll JSON + "Poll now" report counts.
+- [x] `GEMINI_API_KEY` documented in `.env.example` (set in `.env.local` + Vercel; not GitHub).
 
 **Why AI is core here, not optional:** a fixed taxonomy caps what the app can ever learn — a story
 outside the seed list stays untagged, so up/down-votes on it do nothing. The AI is the engine that
@@ -213,4 +214,4 @@ Reuses the same LLM API key as Phase 6.
 
 ---
 
-*Last updated: 2026-06-24 — Phase 5 complete. Phase 6 plan locked: keyword seeds + AI growing vocabulary (open tags) so personalization isn't ceilinged; AI batched + free-tier-bounded (Gemini Flash); summaries deferred to Phase 9 (on-demand, Gemini URL Context / Jina Reader). Next: build Phase 6.*
+*Last updated: 2026-06-24 — Phase 6 complete (keyword seeds + Gemini AI growing-vocabulary tagging in the write path; needs GEMINI_API_KEY for the AI half, keyword-only without it). Next: Phase 7 voting → topic_interest learning loop.*
