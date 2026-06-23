@@ -10,12 +10,19 @@ import { ingestAllSources } from "@/lib/ingest";
  */
 export type PollState =
   | { status: "idle" }
-  | { status: "ok"; fetched: number; inserted: number; skipped: number; failed: number }
+  | {
+      status: "ok";
+      fetched: number;
+      inserted: number;
+      skipped: number;
+      failed: number;
+      grouped: number; // articles attached to an existing/earlier cluster
+    }
   | { status: "error"; message: string };
 
 export async function pollNow(): Promise<PollState> {
   try {
-    const { totals } = await ingestAllSources();
+    const { totals, clustering } = await ingestAllSources();
     revalidatePath("/");
     return {
       status: "ok",
@@ -23,6 +30,7 @@ export async function pollNow(): Promise<PollState> {
       inserted: totals.inserted,
       skipped: totals.skipped,
       failed: totals.failed,
+      grouped: clustering.clustersMatched,
     };
   } catch (err) {
     return { status: "error", message: err instanceof Error ? err.message : String(err) };

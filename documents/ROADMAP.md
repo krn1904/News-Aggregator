@@ -19,8 +19,8 @@ Phases are reconstructed from the schema comments in `src/db/schema.ts` (the ori
 | 2     | Ingest + feed (`/api/poll`, `/api/feed`) + basic UI | ✅ done |
 | 3     | Scheduled polling (GitHub Actions cron)         | ✅ done |
 | 4     | Multi-source ingestion (RSS news feeds)         | ✅ done |
-| 5     | Clustering (dedup same story across sources)    | ⬜ next |
-| 6     | Keyword scoring → `tags`                        | ⬜      |
+| 5     | Clustering (dedup same story across sources)    | ✅ done |
+| 6     | Keyword scoring → `tags`                        | ⬜ next |
 | 7     | Voting → `topic_interest` learning loop         | ⬜      |
 | 8     | Personalized ranking in `/api/feed`             | ⬜      |
 | 9     | On-demand enrichment (`body` / `detailSummary`) | ⬜      |
@@ -129,13 +129,16 @@ Add real news sources beyond Hacker News so clustering (Phase 5) has duplicates 
 
 ---
 
-## Phase 5 — Clustering ⬜ (NEXT)
+## Phase 5 — Clustering ✅ (DONE)
 
 Group the same story carried by multiple sources into one `cluster`.
 
-- [ ] Detect near-duplicate titles/URLs across sources
-- [ ] Create/extend a `clusters` row, set `representativeArticleId`, bump `sourceCount`
-- [ ] Backfill `articles.clusterId`
+- [x] `src/lib/cluster.ts` — title-token similarity (normalize + stopwords + Jaccard) within a time window
+- [x] Create/extend a `clusters` row, set `representativeArticleId`, bump `sourceCount`
+- [x] Backfill `articles.clusterId` (idempotent: only touches unclustered articles)
+- [x] Runs at the end of each poll (`ingestAllSources`); poll JSON + "Poll now" report grouped counts
+
+**Tunables** (in `cluster.ts`): `JACCARD_THRESHOLD` 0.45, `MIN_SHARED_TOKENS` 2, `MATCH_WINDOW_MS` 3 days, `RECENCY_DAYS` 7. Limitation: token matching misses synonyms (e.g. "RBI" vs "Reserve Bank of India") — semantic/embedding matching is a future upgrade if needed. Next step for the UI (Phase 10): collapse a cluster into one feed entry showing `sourceCount`.
 
 ---
 
@@ -178,4 +181,4 @@ Group the same story carried by multiple sources into one `cluster`.
 
 ---
 
-*Last updated: 2026-06-23 — Phase 4 complete (multi-source RSS ingestion: Australia/immigration, India news + markets, AU tech). Next: Phase 5 clustering.*
+*Last updated: 2026-06-23 — Phase 5 complete (title-similarity clustering inside the poll). Next: Phase 6 keyword scoring → tags.*

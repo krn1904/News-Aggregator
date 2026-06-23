@@ -28,6 +28,7 @@ export default function PollButton() {
         <p className="notice" role="status">
           Fetched {state.fetched} · inserted {state.inserted} new · skipped {state.skipped}{" "}
           duplicate{state.skipped === 1 ? "" : "s"}
+          {state.grouped > 0 ? ` · ${state.grouped} grouped into existing stories` : ""}
           {state.failed > 0 ? ` · ${state.failed} source${state.failed === 1 ? "" : "s"} failed` : ""}.
         </p>
       )}
