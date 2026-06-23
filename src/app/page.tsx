@@ -60,7 +60,7 @@ export default async function Home() {
 
       {!error && articles.length === 0 && (
         <div className="empty">
-          No articles yet. Hit <strong>Poll now</strong> to fetch the Hacker News front page.
+          No articles yet. Hit <strong>Poll now</strong> to fetch the latest stories.
         </div>
       )}
 
@@ -72,6 +72,9 @@ export default async function Home() {
             </a>
             <div className="meta">
               <span className="tag">{a.source}</span>
+              {a.sourceCount != null && a.sourceCount > 1 && (
+                <span className="tag sources">{a.sourceCount} sources</span>
+              )}
               {hostOf(a.canonicalUrl) && <span>{hostOf(a.canonicalUrl)}</span>}
               <span>{timeAgo(a.publishedAt)}</span>
             </div>

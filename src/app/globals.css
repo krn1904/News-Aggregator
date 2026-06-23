@@ -125,6 +125,11 @@ a {
   padding: 1px 8px;
 }
 
+.tag.sources {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .empty {
   border: 1px dashed var(--border);
   border-radius: 10px;

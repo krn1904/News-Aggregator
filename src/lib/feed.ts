@@ -1,6 +1,6 @@
-import { desc, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { articles } from "@/db/schema";
+import { articles, clusters } from "@/db/schema";
 
 /**
  * Read stored articles newest-first. Shared by `GET /api/feed` and the feed
@@ -18,6 +18,8 @@ export type FeedArticle = {
   summary: string | null;
   publishedAt: Date | null;
   fetchedAt: Date;
+  // How many articles are clustered with this story (1 = unique). Phase 5.
+  sourceCount: number | null;
 };
 
 export function clampLimit(raw: unknown): number {
@@ -35,8 +37,11 @@ export async function getFeed(limit: number = DEFAULT_LIMIT): Promise<FeedArticl
       summary: articles.summary,
       publishedAt: articles.publishedAt,
       fetchedAt: articles.fetchedAt,
+      sourceCount: clusters.sourceCount,
     })
     .from(articles)
+    // Pull in the article's cluster so the feed can show a "N sources" badge.
+    .leftJoin(clusters, eq(articles.clusterId, clusters.clusterId))
     // Newest published first; nulls last, then by fetch time as a tiebreaker.
     .orderBy(sql`${articles.publishedAt} DESC NULLS LAST`, desc(articles.fetchedAt))
     .limit(limit);
