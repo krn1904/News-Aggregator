@@ -7,7 +7,7 @@ import { articles } from "@/db/schema";
  * page (server component). No personalization yet — ranking by learned
  * interest arrives in Phase 7.
  */
-export const DEFAULT_LIMIT = 50;
+export const DEFAULT_LIMIT = 20;
 export const MAX_LIMIT = 100;
 
 export type FeedArticle = {

@@ -16,8 +16,8 @@ Phases are reconstructed from the schema comments in `src/db/schema.ts` (the ori
 | Phase | Theme                                           | Status |
 | ----- | ----------------------------------------------- | ------ |
 | 1     | Data layer                                      | ✅ done |
-| 2     | Ingest + feed (`/api/poll`, `/api/feed`)        | ⬜ next |
-| 3     | Scheduled polling (GitHub Actions cron)         | ⬜      |
+| 2     | Ingest + feed (`/api/poll`, `/api/feed`) + basic UI | ✅ done |
+| 3     | Scheduled polling (GitHub Actions cron)         | ⬜ next |
 | 4     | Clustering (dedup same story across sources)    | ⬜      |
 | 5     | Keyword scoring → `tags`                        | ⬜      |
 | 6     | Voting → `topic_interest` learning loop         | ⬜      |
@@ -32,11 +32,11 @@ Phases are reconstructed from the schema comments in `src/db/schema.ts` (the ori
 
 ## Hosting / setup checklist (pre-Phase-2)
 
-- [ ] Neon project created
-- [ ] Pooled `DATABASE_URL` in `.env.local`
-- [ ] `POLL_SECRET` set (long random string)
-- [ ] `npm install` + `npm run db:migrate` run (5 tables exist)
-- [ ] `curl localhost:3000/api/db-check` → `ok: true`
+- [x] Neon project created
+- [x] Pooled `DATABASE_URL` in `.env.local`
+- [x] `POLL_SECRET` set (long random string)
+- [x] `npm install` + `npm run db:migrate` run (5 tables exist)
+- [x] `curl localhost:3000/api/db-check` → `ok: true`
 - [ ] Deployed to Vercel with env vars set
 - [ ] Hosted `/api/db-check` → `ok: true`
 
@@ -67,32 +67,38 @@ Phases are reconstructed from the schema comments in `src/db/schema.ts` (the ori
 
 ---
 
-## Phase 2 — Ingest + feed ⬜ (NEXT)
+## Phase 2 — Ingest + feed ✅ (DONE)
 
 Goal: get real articles flowing in from one source and back out as JSON. No learning yet.
 
 `**POST /api/poll` — ingest job**
 
-- [ ] Auth-gate with `POLL_SECRET` (Bearer header)
-- [ ] Fetch Hacker News via Algolia API (`https://hn.algolia.com/api/v1/search?tags=front_page`)
-- [ ] Normalize each item → `source`, `title`, `canonicalUrl`, `summary`, `publishedAt`
-- [ ] Compute `contentHash` for idempotent re-ingest
-- [ ] Insert with `onConflictDoNothing` on `canonicalUrl` (dedup)
-- [ ] Leave `enrichmentStatus = "raw"`, `body`/`detailSummary` empty
-- [ ] Return count of inserted rows
+- [x] Auth-gate with `POLL_SECRET` (Bearer header)
+- [x] Fetch Hacker News via Algolia API (`https://hn.algolia.com/api/v1/search?tags=front_page`)
+- [x] Normalize each item → `source`, `title`, `canonicalUrl`, `summary`, `publishedAt`
+- [x] Compute `contentHash` for idempotent re-ingest
+- [x] Insert with `onConflictDoNothing` on `canonicalUrl` (dedup)
+- [x] Leave `enrichmentStatus = "raw"`, `body`/`detailSummary` empty
+- [x] Return counts (`fetched`, `inserted`, `skipped`)
 
 `**GET /api/feed` — read back**
 
-- [ ] Query `articles` ordered by `publishedAt DESC`
-- [ ] Return JSON (no personalization yet)
+- [x] Query `articles` ordered by `publishedAt DESC` (nulls last, then `fetchedAt`)
+- [x] Return JSON (no personalization yet); `?limit` (default 20, max 100)
+
+**Basic UI** (built early; rest of the frontend is Phase 9)
+
+- [x] `src/app/page.tsx` — feed list (newest-first) with empty/error states
+- [x] **Poll now** button via server action (`POLL_SECRET` stays server-side)
+- [x] Shared logic extracted to `src/lib/ingest.ts` + `src/lib/feed.ts`
 
 **Acceptance**
 
-- [ ] `POST /api/poll` returns insert count
-- [ ] Running poll twice inserts 0 the second time (dedup works)
-- [ ] `GET /api/feed` lists stored articles
+- [x] `POST /api/poll` returns insert count
+- [x] Running poll twice inserts 0 the second time (dedup works)
+- [x] `GET /api/feed` lists stored articles
 
-**Open decision:** HN-only first (recommended), vs. `?source=` param now for easy multi-source later.
+**Decision made:** HN-only first (adapter pattern in `src/lib/sources/` so a second source is easy later).
 
 ---
 
@@ -144,12 +150,13 @@ Group the same story carried by multiple sources into one `cluster`.
 
 ---
 
-## Phase 9 — Frontend UI ⬜
+## Phase 9 — Frontend UI 🔵
 
-- [ ] Feed view consuming `/api/feed`
-- [ ] Thumbs up/down wired to `/api/vote`
-- [ ] Article detail view triggering enrichment
+- [x] Feed view consuming `/api/feed` (basic version shipped in Phase 2)
+- [ ] Thumbs up/down wired to `/api/vote` (needs Phase 6)
+- [ ] Article detail view triggering enrichment (needs Phase 8)
+- [ ] Styling/polish pass
 
 ---
 
-*Last updated: 2026-06-21 — Phase 1 complete, hosting in progress, Phase 2 next.*
+*Last updated: 2026-06-23 — Phase 2 complete (ingest + feed + basic UI, verified working locally). Next: Phase 3 scheduled polling.*

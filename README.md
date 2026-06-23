@@ -3,15 +3,24 @@
 Personalized, multi-source, self-learning news app.
 Stack: **Next.js (TypeScript)** · **Neon** (serverless Postgres) · **Drizzle ORM** · Vercel + GitHub Actions.
 
-This repo is at **Phase 1 — Data layer**. The database schema and a DB round-trip
-test exist. No news is fetched yet (that's Phase 2).
+This repo is at **Phase 2 — Ingest + feed**. News is now fetched from Hacker News,
+stored in Neon, read back over an API, and shown in a basic UI. See
+[`documents/ROADMAP.md`](documents/ROADMAP.md) for the full phase plan and progress.
 
-## What's in this phase
+## What's in the app so far
+**Phase 1 — Data layer**
 - `src/db/schema.ts` — all 5 tables (articles, clusters, tags, topic_interest, votes), matching the design doc §10.
 - `src/db/index.ts` — Neon HTTP client (serverless-safe, no connection-pool exhaustion).
 - `drizzle/0000_phase1_init.sql` — generated migration.
 - `src/app/api/health` — liveness probe (no DB).
 - `src/app/api/db-check` — proves the app can read+write Neon.
+
+**Phase 2 — Ingest + feed**
+- `POST /api/poll` — fetches the Hacker News front page (Algolia), normalizes, dedups on
+  `canonical_url`, and stores new articles. Idempotent. Auth: `Authorization: Bearer <POLL_SECRET>`.
+- `GET /api/feed` — returns stored articles newest-first (`?limit`, default 20, max 100).
+- `src/lib/sources/hackernews.ts` — source adapter; `src/lib/ingest.ts` / `src/lib/feed.ts` — shared logic.
+- `src/app/page.tsx` — basic feed UI with a **Poll now** button (server action; the secret stays server-side).
 
 ## One-time setup (your part)
 1. **Create a free Neon project** at neon.tech → open *Connection Details* → copy the **Pooled** connection string.
@@ -22,14 +31,19 @@ test exist. No news is fetched yet (that's Phase 2).
    npm run db:migrate     # applies drizzle/0000_phase1_init.sql to Neon
    ```
 
-## Verify Phase 1
+## Verify
 ```bash
 npm run dev
-# then in another terminal:
+# Phase 1 — data layer:
 curl localhost:3000/api/health     # -> { ok: true, ... }
 curl localhost:3000/api/db-check   # -> { ok: true, roundTrip: { topic: "__db_check__", ... } }
+
+# Phase 2 — ingest + feed:
+curl -X POST localhost:3000/api/poll -H "Authorization: Bearer $POLL_SECRET"  # -> { fetched, inserted, skipped }
+curl localhost:3000/api/feed        # -> { ok: true, count, articles: [...] }
 ```
-If `db-check` returns `ok: true`, the data layer works and we're ready for Phase 2.
+Run the poll twice — the second run should report `inserted: 0` (dedup works).
+Or just open `http://localhost:3000` and click **Poll now**.
 
 ## Useful scripts
 | command | does |
@@ -39,6 +53,6 @@ If `db-check` returns `ok: true`, the data layer works and we're ready for Phase
 | `npm run db:migrate` | apply migrations to Neon |
 | `npm run typecheck` | `tsc --noEmit` |
 
-## Next: Phase 2
-Add `POST /api/poll` to fetch one source (Hacker News / Algolia), normalize, and store —
-then `GET /api/feed` to read it back.
+## Next: Phase 3 — Scheduled polling
+Add a GitHub Actions workflow on a cron that calls the hosted `POST /api/poll` with
+`POLL_SECRET`, so articles accumulate automatically over time.
