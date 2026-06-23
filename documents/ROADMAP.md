@@ -17,8 +17,8 @@ Phases are reconstructed from the schema comments in `src/db/schema.ts` (the ori
 | ----- | ----------------------------------------------- | ------ |
 | 1     | Data layer                                      | ✅ done |
 | 2     | Ingest + feed (`/api/poll`, `/api/feed`) + basic UI | ✅ done |
-| 3     | Scheduled polling (GitHub Actions cron)         | ⬜ next |
-| 4     | Clustering (dedup same story across sources)    | ⬜      |
+| 3     | Scheduled polling (GitHub Actions cron)         | ✅ done |
+| 4     | Clustering (dedup same story across sources)    | ⬜ next |
 | 5     | Keyword scoring → `tags`                        | ⬜      |
 | 6     | Voting → `topic_interest` learning loop         | ⬜      |
 | 7     | Personalized ranking in `/api/feed`             | ⬜      |
@@ -102,11 +102,15 @@ Goal: get real articles flowing in from one source and back out as JSON. No lear
 
 ---
 
-## Phase 3 — Scheduled polling ⬜
+## Phase 3 — Scheduled polling ✅ (DONE)
 
-- [ ] GitHub Actions workflow on a cron
-- [ ] Calls hosted `/api/poll` with `POLL_SECRET`
-- [ ] Confirm articles accumulate automatically over time
+- [x] GitHub Actions workflow on a cron — `.github/workflows/poll.yml` (daily 06:00 UTC + manual `workflow_dispatch`)
+- [x] Calls hosted `/api/poll` with `POLL_SECRET` (reads `APP_URL` + `POLL_SECRET` repo secrets; fails on non-2xx)
+- [ ] Confirm articles accumulate automatically over time (verify after merge to `main` + first scheduled run)
+
+**Setup required (one-time, in GitHub):** Settings → Secrets and variables → Actions → add
+`APP_URL` (Vercel URL, no trailing slash) and `POLL_SECRET` (same value as the Vercel env var).
+The `schedule:` trigger only fires once the workflow is on the **default branch (`main`)**.
 
 ---
 
@@ -159,4 +163,4 @@ Group the same story carried by multiple sources into one `cluster`.
 
 ---
 
-*Last updated: 2026-06-23 — Phase 2 complete (ingest + feed + basic UI, verified working locally). Next: Phase 3 scheduled polling.*
+*Last updated: 2026-06-23 — Phase 3 complete (daily GitHub Actions cron calling /api/poll). Next: Phase 4 clustering.*

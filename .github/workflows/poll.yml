@@ -1,0 +1,57 @@
+name: Scheduled poll
+
+# Phase 3 — auto-ingest. Calls the deployed POST /api/poll on a schedule so
+# articles accumulate without anyone clicking "Poll now".
+#
+# Required GitHub repo secrets (Settings → Secrets and variables → Actions):
+#   APP_URL      e.g. https://your-app.vercel.app   (no trailing slash)
+#   POLL_SECRET  must match the POLL_SECRET in your Vercel env vars
+#
+# Note: a `schedule:` trigger only fires from the workflow file on the repo's
+# DEFAULT branch (main), so the cron starts working once this is merged.
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # daily at 06:00 UTC
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+# We only call an external URL — no repo write access needed.
+permissions: {}
+
+# Avoid overlapping runs if a manual run coincides with the schedule.
+concurrency:
+  group: scheduled-poll
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger /api/poll
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          POLL_SECRET: ${{ secrets.POLL_SECRET }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${APP_URL:-}" ] || [ -z "${POLL_SECRET:-}" ]; then
+            echo "::error::APP_URL and POLL_SECRET repo secrets must be set."
+            exit 1
+          fi
+
+          base="${APP_URL%/}" # strip any trailing slash
+          echo "Polling ${base}/api/poll"
+
+          code=$(curl -sS -X POST "${base}/api/poll" \
+            -H "Authorization: Bearer ${POLL_SECRET}" \
+            -o /tmp/resp.json -w "%{http_code}")
+
+          echo "HTTP ${code}"
+          echo "Response:"
+          cat /tmp/resp.json || true
+          echo
+
+          if [ "${code}" -lt 200 ] || [ "${code}" -ge 300 ]; then
+            echo "::error::Poll failed with HTTP ${code}"
+            exit 1
+          fi
