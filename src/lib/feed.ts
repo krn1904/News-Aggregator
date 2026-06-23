@@ -33,7 +33,10 @@ export function clampLimit(raw: unknown): number {
   return Number.isFinite(n) && n > 0 ? Math.min(n, MAX_LIMIT) : DEFAULT_LIMIT;
 }
 
-export async function getFeed(limit: number = DEFAULT_LIMIT): Promise<FeedStory[]> {
+export async function getFeed(
+  limit: number = DEFAULT_LIMIT,
+  offset: number = 0
+): Promise<FeedStory[]> {
   const rows = await db
     .select({
       id: articles.id,
@@ -70,7 +73,7 @@ export async function getFeed(limit: number = DEFAULT_LIMIT): Promise<FeedStory[
   // Order stories by each cluster's latest coverage, then take the page.
   return [...groups.values()]
     .sort((a, b) => b.latest - a.latest)
-    .slice(0, limit)
+    .slice(offset, offset + limit)
     .map((g) => {
       // Distinct OUTLETS, most-recent url per outlet (members are recency-desc).
       const byOutlet = new Map<string, string>();
