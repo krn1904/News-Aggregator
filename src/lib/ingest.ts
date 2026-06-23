@@ -1,12 +1,14 @@
 import { db } from "@/db";
 import { articles } from "@/db/schema";
 import { sources } from "@/lib/sources";
+import { clusterUnclustered, type ClusterResult } from "@/lib/cluster";
 
 /**
  * Core ingest logic, shared by `POST /api/poll` (secret-gated, for the cron) and
  * the UI "Poll now" server action. Runs every registered source, inserting only
- * new canonical URLs (ON CONFLICT DO NOTHING). Resilient: one source failing is
- * recorded and the rest still run.
+ * new canonical URLs (ON CONFLICT DO NOTHING), then clusters the newly-stored
+ * articles (Phase 5). Resilient: one source failing is recorded and the rest
+ * still run.
  */
 export type SourceResult = {
   source: string;
@@ -19,6 +21,7 @@ export type SourceResult = {
 export type IngestResult = {
   totals: { fetched: number; inserted: number; skipped: number; sources: number; failed: number };
   perSource: SourceResult[];
+  clustering: ClusterResult;
 };
 
 export async function ingestAllSources(): Promise<IngestResult> {
@@ -62,5 +65,14 @@ export async function ingestAllSources(): Promise<IngestResult> {
     { fetched: 0, inserted: 0, skipped: 0, sources: 0, failed: 0 }
   );
 
-  return { totals, perSource };
+  // Cluster anything not yet grouped (the just-inserted articles, plus any
+  // backlog). Failure here shouldn't fail the whole poll.
+  let clustering: ClusterResult = { clustersCreated: 0, clustersMatched: 0, considered: 0 };
+  try {
+    clustering = await clusterUnclustered();
+  } catch {
+    // swallow — ingestion already succeeded; clustering will retry next poll
+  }
+
+  return { totals, perSource, clustering };
 }

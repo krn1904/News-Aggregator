@@ -67,6 +67,14 @@ resilient: a feed that 404s is logged and skipped, the rest still run, and `/api
 per-source counts. Current feeds target Australia + immigration, India news + markets, and the
 Australian tech sector. Needs `fast-xml-parser` (already in `package.json`).
 
-## Next: Phase 5 — Clustering
-Group the same story carried by multiple sources into one cluster (`representative_article_id`,
-`source_count`), and backfill `articles.cluster_id` — now meaningful with several sources flowing in.
+## Clustering (Phase 5)
+At the end of each poll, `src/lib/cluster.ts` groups the same story across sources using
+title-token similarity (normalize + stopwords + Jaccard) within a time window. New articles
+either join an existing cluster (bumping `source_count`) or seed a new one (`representative_article_id`).
+Idempotent — only unclustered articles are touched. Thresholds are tunable constants at the top of the file.
+The feed (`getFeed`) then collapses each cluster into a single story — the most recent member as the
+headline, ordered by latest coverage, with the other sources listed beneath as "also covered by" links.
+
+## Next: Phase 6 — Keyword scoring → tags
+Extract topics from each article's `title` + `summary` and write `tags` rows — the input the
+learning loop (Phase 7) will weight by your votes.
