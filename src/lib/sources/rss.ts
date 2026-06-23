@@ -15,6 +15,10 @@ const parser = new XMLParser({
   attributeNamePrefix: "@_",
   // Some feeds wrap text in CDATA / use HTML entities — keep values as strings.
   textNodeName: "#text",
+  // Passing processEntities as an object lifts fast-xml-parser's default 1000
+  // total-entity-expansion cap (which big news feeds like Guardian AU exceed),
+  // while keeping a high finite bound as billion-laughs protection.
+  processEntities: { maxTotalExpansions: 1_000_000, maxEntityCount: 100_000, maxEntitySize: 1_000_000 },
 });
 
 /** Pull plain text out of a field that may be a string or a parser object. */
@@ -29,16 +33,34 @@ function text(v: unknown): string {
   return "";
 }
 
-/** Strip HTML tags + decode the few common entities, then collapse whitespace. */
-function toPlainSummary(html: string): string | null {
-  const stripped = html
-    .replace(/<[^>]*>/g, " ")
+function safeCodePoint(n: number): string {
+  try {
+    return Number.isFinite(n) && n > 0 ? String.fromCodePoint(n) : "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Decode entities the XML parser leaves behind. It already handles &amp;/&lt;/…
+ * and &#39;, but NOT other numeric refs (&#233; → é, &#8217; → ’), so feeds with
+ * accents or smart quotes arrive raw. Decode decimal + hex + the common named.
+ */
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => safeCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => safeCodePoint(parseInt(d, 10)))
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&#39;|&apos;/g, "'");
+}
+
+/** Strip HTML tags, decode entities, then collapse whitespace. */
+function toPlainSummary(html: string): string | null {
+  const stripped = decodeEntities(html.replace(/<[^>]*>/g, " "))
     .replace(/\s+/g, " ")
     .replace(/\s+([.,;:!?])/g, "$1") // tidy "word ." -> "word." left by tag stripping
     .trim();
@@ -101,7 +123,7 @@ export async function fetchRss(def: FeedDef): Promise<NormalizedArticle[]> {
 
   const out: NormalizedArticle[] = [];
   for (const item of items) {
-    const title = text(item.title).trim();
+    const title = decodeEntities(text(item.title)).trim();
     const canonicalUrl = extractLink(item);
     if (!title || !canonicalUrl) continue; // skip malformed entries
 
