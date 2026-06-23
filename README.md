@@ -53,6 +53,12 @@ Or just open `http://localhost:3000` and click **Poll now**.
 | `npm run db:migrate` | apply migrations to Neon |
 | `npm run typecheck` | `tsc --noEmit` |
 
-## Next: Phase 3 — Scheduled polling
-Add a GitHub Actions workflow on a cron that calls the hosted `POST /api/poll` with
-`POLL_SECRET`, so articles accumulate automatically over time.
+## Scheduled polling (Phase 3)
+`.github/workflows/poll.yml` calls the deployed `POST /api/poll` daily (06:00 UTC) and on
+manual dispatch, so articles accumulate automatically. One-time setup in GitHub → Settings →
+Secrets and variables → Actions: add `APP_URL` (Vercel URL, no trailing slash) and `POLL_SECRET`
+(same as the Vercel env var). The schedule activates once the workflow is on `main`.
+
+## Next: Phase 4 — Clustering
+Group the same story carried by multiple sources into one cluster (`representative_article_id`,
+`source_count`), and backfill `articles.cluster_id`.
