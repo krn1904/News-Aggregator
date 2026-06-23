@@ -20,7 +20,7 @@ Phases are reconstructed from the schema comments in `src/db/schema.ts` (the ori
 | 3     | Scheduled polling (GitHub Actions cron)         | ✅ done |
 | 4     | Multi-source ingestion (RSS news feeds)         | ✅ done |
 | 5     | Clustering (dedup same story across sources)    | ✅ done |
-| 6     | Keyword scoring → `tags`                        | ⬜ next |
+| 6     | Tagging — keyword seeds + AI growing vocab      | ⬜ next |
 | 7     | Voting → `topic_interest` learning loop         | ⬜      |
 | 8     | Personalized ranking in `/api/feed`             | ⬜      |
 | 9     | On-demand enrichment (`body` / `detailSummary`) | ⬜      |
@@ -143,10 +143,36 @@ Group the same story carried by multiple sources into one `cluster`.
 
 ---
 
-## Phase 6 — Keyword scoring → tags ⬜
+## Phase 6 — Tagging (keyword seeds + AI growing vocabulary) ⬜ (NEXT)
 
-- [ ] Extract topics from `title` + `summary`
-- [ ] Write `tags` rows (`articleId`, `topic`, `score`)
+Tag each article with topics so the vote loop (Phase 7) and ranking (Phase 8) have signal.
+Runs in the write path after insert, idempotent (only tags articles with no tags yet).
+Tags table is `(articleId, topic, score)`, PK `(articleId, topic)` — append-only; topic strings
+are a shared, **growing** vocabulary (free text, so new topics are first-class with no schema change).
+
+**Two-tier engine (decided with Krn):**
+- [ ] **Seed taxonomy** — broad buckets (technology, politics, business, sport, world…) + interest
+      topics (immigration, australia, india, markets, jobs), each a keyword list. Keyword-matched
+      against tokenized `title` (weighted) + `summary`. Free, instant, deterministic.
+- [ ] **AI fallback for the open vocabulary** — for articles that don't confidently match a seed,
+      call an LLM with the article's *natural* title+summary **and the current distinct-tag list**;
+      it reuses a fitting existing tag or coins a new kebab-case one. This is what lets the feed grow
+      toward new interests (an untagged story can never be learned from).
+- [ ] Write `tags` rows `(articleId, topic, score)`.
+
+**Why AI is core here, not optional:** a fixed taxonomy caps what the app can ever learn — a story
+outside the seed list stays untagged, so up/down-votes on it do nothing. The AI is the engine that
+expands the vocabulary so personalization isn't ceilinged.
+
+**Cost / free-tier design:** AI only on unmatched articles, **batched** (one call tags many) to stay
+under requests-per-minute limits; whole thing fits a free tier (e.g. Gemini 2.5 Flash ~1,500/day).
+Pass the tag list each call + normalize (lowercase/kebab) to avoid vocabulary drift (`climate` vs
+`climate-change`). Graceful failure: if the AI call fails, leave untagged and retry next poll.
+Needs a free LLM API key as a secret (like `POLL_SECRET`).
+
+**Model notes (provider-neutral):** topic extraction → Gemini 2.5 Flash/Flash-Lite or Groq Llama 3.3 70B
+(small/fast is enough). Don't strip stopwords for the AI path — give it natural text; stopword
+removal is only for the keyword path.
 
 ---
 
@@ -165,11 +191,16 @@ Group the same story carried by multiple sources into one `cluster`.
 
 ---
 
-## Phase 9 — On-demand enrichment ⬜
+## Phase 9 — On-demand enrichment (AI summaries) ⬜
 
-- [ ] On article open, fetch full `body`, generate `detailSummary`
+- [ ] On article open (button), fetch full `body`, generate `detailSummary` via LLM
 - [ ] Set `enrichmentStatus`: `raw` → `enriched` (or `failed`)
-- [ ] Only enrich selected articles (cost control)
+- [ ] Only enrich on demand (cost control) — otherwise just show the source link
+
+**Reading the article (decided with Krn):** LLMs don't fetch URLs by default. Two free routes —
+Gemini **URL Context** tool (pass the URL, Gemini reads it) or **Jina Reader** (`https://r.jina.ai/<url>`
+→ clean text → any model). Paywalled articles can't be read → fall back to showing the link only.
+Reuses the same LLM API key as Phase 6.
 
 ---
 
@@ -182,4 +213,4 @@ Group the same story carried by multiple sources into one `cluster`.
 
 ---
 
-*Last updated: 2026-06-23 — Phase 5 complete (title-similarity clustering inside the poll). Next: Phase 6 keyword scoring → tags.*
+*Last updated: 2026-06-24 — Phase 5 complete. Phase 6 plan locked: keyword seeds + AI growing vocabulary (open tags) so personalization isn't ceilinged; AI batched + free-tier-bounded (Gemini Flash); summaries deferred to Phase 9 (on-demand, Gemini URL Context / Jina Reader). Next: build Phase 6.*
