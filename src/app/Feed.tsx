@@ -24,6 +24,22 @@ function hostOf(url: string): string {
   }
 }
 
+/**
+ * The link's domain, but only when it adds information — i.e. when it's a
+ * different outlet than the source tag. For RSS feeds (livemint-markets →
+ * livemint.com) it's redundant and hidden; for Hacker News linking out to, say,
+ * bbc.com, it's shown ("via bbc.com").
+ */
+function viaHost(source: string, url: string): string {
+  const host = hostOf(url);
+  if (!host) return "";
+  const brand = source.split("-")[0].toLowerCase();
+  const parts = host.split(".");
+  const root = (parts[0] === "www" ? parts[1] : parts[0] ?? "").replace(/^the/, "").toLowerCase();
+  if (brand && root && (brand.includes(root) || root.includes(brand))) return "";
+  return host;
+}
+
 /** "guardian-australia" -> "guardian australia" for nicer display. */
 function label(source: string): string {
   return source.replace(/-/g, " ");
@@ -67,7 +83,7 @@ export default function Feed({ initial }: { initial: FeedStory[] }) {
             <div className="meta">
               <span className="tag">{label(s.source)}</span>
               {s.sourceCount > 1 && <span className="tag sources">{s.sourceCount} sources</span>}
-              {hostOf(s.canonicalUrl) && <span>{hostOf(s.canonicalUrl)}</span>}
+              {viaHost(s.source, s.canonicalUrl) && <span>via {viaHost(s.source, s.canonicalUrl)}</span>}
               <span>{timeAgo(s.publishedAt)}</span>
             </div>
             {s.others.length > 0 && (
