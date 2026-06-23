@@ -1,34 +1,66 @@
 import { db } from "@/db";
 import { articles } from "@/db/schema";
-import { fetchHackerNews } from "@/lib/sources/hackernews";
+import { sources } from "@/lib/sources";
 
 /**
- * Core ingest logic, shared by the public `POST /api/poll` route (secret-gated,
- * for the scheduled poller) and the UI's "Poll now" server action (trusted,
- * server-side). Keeping it here means both paths behave identically.
+ * Core ingest logic, shared by `POST /api/poll` (secret-gated, for the cron) and
+ * the UI "Poll now" server action. Runs every registered source, inserting only
+ * new canonical URLs (ON CONFLICT DO NOTHING). Resilient: one source failing is
+ * recorded and the rest still run.
  */
-export type IngestResult = {
+export type SourceResult = {
   source: string;
   fetched: number;
   inserted: number;
   skipped: number;
+  error?: string;
 };
 
-export async function ingestHackerNews(): Promise<IngestResult> {
-  const items = await fetchHackerNews();
-  const fetched = items.length;
+export type IngestResult = {
+  totals: { fetched: number; inserted: number; skipped: number; sources: number; failed: number };
+  perSource: SourceResult[];
+};
 
-  if (fetched === 0) {
-    return { source: "hackernews", fetched: 0, inserted: 0, skipped: 0 };
+export async function ingestAllSources(): Promise<IngestResult> {
+  const perSource: SourceResult[] = [];
+
+  for (const source of sources) {
+    try {
+      const items = await source.fetch();
+      const fetched = items.length;
+
+      let inserted = 0;
+      if (fetched > 0) {
+        const rows = await db
+          .insert(articles)
+          .values(items)
+          .onConflictDoNothing({ target: articles.canonicalUrl })
+          .returning({ id: articles.id });
+        inserted = rows.length;
+      }
+
+      perSource.push({ source: source.name, fetched, inserted, skipped: fetched - inserted });
+    } catch (err) {
+      perSource.push({
+        source: source.name,
+        fetched: 0,
+        inserted: 0,
+        skipped: 0,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
-  // Only new canonical URLs land; existing ones are silently skipped.
-  const insertedRows = await db
-    .insert(articles)
-    .values(items)
-    .onConflictDoNothing({ target: articles.canonicalUrl })
-    .returning({ id: articles.id });
+  const totals = perSource.reduce(
+    (acc, r) => ({
+      fetched: acc.fetched + r.fetched,
+      inserted: acc.inserted + r.inserted,
+      skipped: acc.skipped + r.skipped,
+      sources: acc.sources + 1,
+      failed: acc.failed + (r.error ? 1 : 0),
+    }),
+    { fetched: 0, inserted: 0, skipped: 0, sources: 0, failed: 0 }
+  );
 
-  const inserted = insertedRows.length;
-  return { source: "hackernews", fetched, inserted, skipped: fetched - inserted };
+  return { totals, perSource };
 }

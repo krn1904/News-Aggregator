@@ -18,15 +18,16 @@ Phases are reconstructed from the schema comments in `src/db/schema.ts` (the ori
 | 1     | Data layer                                      | ✅ done |
 | 2     | Ingest + feed (`/api/poll`, `/api/feed`) + basic UI | ✅ done |
 | 3     | Scheduled polling (GitHub Actions cron)         | ✅ done |
-| 4     | Clustering (dedup same story across sources)    | ⬜ next |
-| 5     | Keyword scoring → `tags`                        | ⬜      |
-| 6     | Voting → `topic_interest` learning loop         | ⬜      |
-| 7     | Personalized ranking in `/api/feed`             | ⬜      |
-| 8     | On-demand enrichment (`body` / `detailSummary`) | ⬜      |
-| 9     | Frontend UI                                     | ⬜      |
+| 4     | Multi-source ingestion (RSS news feeds)         | ✅ done |
+| 5     | Clustering (dedup same story across sources)    | ⬜ next |
+| 6     | Keyword scoring → `tags`                        | ⬜      |
+| 7     | Voting → `topic_interest` learning loop         | ⬜      |
+| 8     | Personalized ranking in `/api/feed`             | ⬜      |
+| 9     | On-demand enrichment (`body` / `detailSummary`) | ⬜      |
+| 10    | Frontend UI                                     | ⬜      |
 
 
-> Phases 3, 4, 7, 9 are implied by the schema + README but were not numbered in the source notes — included here so nothing falls through the cracks. Renumber freely.
+> Phase 4 (multi-source) was inserted ahead of clustering — clustering only does meaningful work once ≥2 sources exist. Later phases renumbered accordingly.
 
 ---
 
@@ -114,7 +115,21 @@ The `schedule:` trigger only fires once the workflow is on the **default branch 
 
 ---
 
-## Phase 4 — Clustering ⬜
+## Phase 4 — Multi-source ingestion ✅ (DONE)
+
+Add real news sources beyond Hacker News so clustering (Phase 5) has duplicates to merge.
+
+- [x] Generic RSS/Atom adapter — `src/lib/sources/rss.ts` (HTML-stripped summaries, robust link/date handling, in-batch dedup)
+- [x] Source registry — `src/lib/sources/index.ts`; each feed is one `{ name, url }` line
+- [x] `ingestAllSources()` loops every source resiliently (one feed failing doesn't abort the rest); per-source + total counts
+- [x] `POST /api/poll` + "Poll now" report per-source results and failures
+- [x] `fast-xml-parser` dependency added
+
+**Feeds wired (topic-targeted):** Australia + immigration (Guardian australia-news, world/migration), India news (Guardian india), India markets (Economic Times markets, Livemint markets), Australian IT/tech (Guardian au/technology). Job-market angle gets sharpened by Phase 6 tagging. Feed URLs verified live at runtime; broken feeds are logged and skipped.
+
+---
+
+## Phase 5 — Clustering ⬜ (NEXT)
 
 Group the same story carried by multiple sources into one `cluster`.
 
@@ -124,14 +139,14 @@ Group the same story carried by multiple sources into one `cluster`.
 
 ---
 
-## Phase 5 — Keyword scoring → tags ⬜
+## Phase 6 — Keyword scoring → tags ⬜
 
 - [ ] Extract topics from `title` + `summary`
 - [ ] Write `tags` rows (`articleId`, `topic`, `score`)
 
 ---
 
-## Phase 6 — Voting → learning loop ⬜
+## Phase 7 — Voting → learning loop ⬜
 
 - [ ] `POST /api/vote` records +1 / -1 into `votes`
 - [ ] Update `topic_interest.score` per topic from votes
@@ -139,14 +154,14 @@ Group the same story carried by multiple sources into one `cluster`.
 
 ---
 
-## Phase 7 — Personalized ranking ⬜
+## Phase 8 — Personalized ranking ⬜
 
 - [ ] `/api/feed` ranks articles by `tags.score` × `topic_interest.score`
 - [ ] Recency weighting / decay
 
 ---
 
-## Phase 8 — On-demand enrichment ⬜
+## Phase 9 — On-demand enrichment ⬜
 
 - [ ] On article open, fetch full `body`, generate `detailSummary`
 - [ ] Set `enrichmentStatus`: `raw` → `enriched` (or `failed`)
@@ -154,13 +169,13 @@ Group the same story carried by multiple sources into one `cluster`.
 
 ---
 
-## Phase 9 — Frontend UI 🔵
+## Phase 10 — Frontend UI 🔵
 
 - [x] Feed view consuming `/api/feed` (basic version shipped in Phase 2)
-- [ ] Thumbs up/down wired to `/api/vote` (needs Phase 6)
-- [ ] Article detail view triggering enrichment (needs Phase 8)
+- [ ] Thumbs up/down wired to `/api/vote` (needs Phase 7)
+- [ ] Article detail view triggering enrichment (needs Phase 9)
 - [ ] Styling/polish pass
 
 ---
 
-*Last updated: 2026-06-23 — Phase 3 complete (daily GitHub Actions cron calling /api/poll). Next: Phase 4 clustering.*
+*Last updated: 2026-06-23 — Phase 4 complete (multi-source RSS ingestion: Australia/immigration, India news + markets, AU tech). Next: Phase 5 clustering.*
