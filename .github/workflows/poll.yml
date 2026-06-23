@@ -6,13 +6,22 @@ name: Scheduled poll
 # Required GitHub repo secrets (Settings → Secrets and variables → Actions):
 #   APP_URL      e.g. https://your-app.vercel.app   (no trailing slash)
 #   POLL_SECRET  must match the POLL_SECRET in your Vercel env vars
+# Optional:
+#   VERCEL_AUTOMATION_BYPASS_SECRET  only needed if the deployment has Vercel
+#     Deployment Protection enabled. Generate it in Vercel → Settings → Deployment
+#     Protection → Protection Bypass for Automation; it's sent as the
+#     `x-vercel-protection-bypass` header so the cron isn't blocked by Vercel's SSO.
 #
 # Note: a `schedule:` trigger only fires from the workflow file on the repo's
 # DEFAULT branch (main), so the cron starts working once this is merged.
 
 on:
   schedule:
-    - cron: "0 6 * * *" # daily at 06:00 UTC
+    # GitHub cron is ALWAYS UTC and does not adjust for daylight saving.
+    # 20:00 UTC = 06:00 Melbourne (AEST, UTC+10).
+    # During Melbourne daylight saving (AEDT, UTC+11, ~Oct–Apr) this lands at 07:00 —
+    # switch to "0 19 * * *" for those months if you need it exactly at 06:00.
+    - cron: "0 20 * * *"
   workflow_dispatch: {} # allow manual runs from the Actions tab
 
 # We only call an external URL — no repo write access needed.
@@ -31,6 +40,7 @@ jobs:
         env:
           APP_URL: ${{ secrets.APP_URL }}
           POLL_SECRET: ${{ secrets.POLL_SECRET }}
+          VERCEL_BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
           set -euo pipefail
 
@@ -42,8 +52,14 @@ jobs:
           base="${APP_URL%/}" # strip any trailing slash
           echo "Polling ${base}/api/poll"
 
+          headers=(-H "Authorization: Bearer ${POLL_SECRET}")
+          if [ -n "${VERCEL_BYPASS:-}" ]; then
+            # Get past Vercel Deployment Protection (Protection Bypass for Automation).
+            headers+=(-H "x-vercel-protection-bypass: ${VERCEL_BYPASS}")
+          fi
+
           code=$(curl -sS -X POST "${base}/api/poll" \
-            -H "Authorization: Bearer ${POLL_SECRET}" \
+            "${headers[@]}" \
             -o /tmp/resp.json -w "%{http_code}")
 
           echo "HTTP ${code}"
