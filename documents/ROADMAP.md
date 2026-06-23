@@ -133,13 +133,13 @@ Add real news sources beyond Hacker News so clustering (Phase 5) has duplicates 
 
 Group the same story carried by multiple sources into one `cluster`.
 
-- [x] `src/lib/cluster.ts` — title-token similarity (normalize + stopwords + Jaccard) within a time window
+- [x] `src/lib/cluster.ts` — cross-outlet title-token overlap (normalize + stopwords) within a time window; never merges two articles from the same outlet (kills templated-headline false merges)
 - [x] Create/extend a `clusters` row, set `representativeArticleId`, bump `sourceCount`
 - [x] Backfill `articles.clusterId` (idempotent: only touches unclustered articles)
 - [x] Runs at the end of each poll (`ingestAllSources`); poll JSON + "Poll now" report grouped counts
 - [x] Feed collapses each cluster into one story (most-recent headline, ordered by latest coverage) with an "also covered by" source list + "N sources" badge
 
-**Tunables** (in `cluster.ts`): `JACCARD_THRESHOLD` 0.45, `MIN_SHARED_TOKENS` 2, `MATCH_WINDOW_MS` 3 days, `RECENCY_DAYS` 7. Limitation: token matching misses synonyms (e.g. "RBI" vs "Reserve Bank of India") — semantic/embedding matching is a future upgrade if needed. The feed collapses each cluster into one story with the other sources listed beneath ("also covered by"); a fully expandable card (each version's own summary/preview) stays for Phase 10.
+**Tunables** (in `cluster.ts`): `OVERLAP_THRESHOLD` 0.5, `MIN_SHARED_TOKENS` 2, `MATCH_WINDOW_MS` 3 days, `RECENCY_DAYS` 7. "N sources" in the feed counts distinct **outlets**, not articles. Limitation: token matching misses synonyms (e.g. "RBI" vs "Reserve Bank of India") — semantic/embedding matching is a future upgrade if needed. The feed collapses each cluster into one story with the other sources listed beneath ("also covered by"); a fully expandable card (each version's own summary/preview) stays for Phase 10.
 
 ---
 

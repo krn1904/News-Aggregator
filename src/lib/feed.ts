@@ -71,17 +71,23 @@ export async function getFeed(limit: number = DEFAULT_LIMIT): Promise<FeedStory[
   return [...groups.values()]
     .sort((a, b) => b.latest - a.latest)
     .slice(0, limit)
-    .map((g) => ({
-      id: g.rep.id,
-      source: g.rep.source,
-      title: g.rep.title,
-      canonicalUrl: g.rep.canonicalUrl,
-      summary: g.rep.summary,
-      publishedAt: g.rep.publishedAt,
-      fetchedAt: g.rep.fetchedAt,
-      sourceCount: g.members.length,
-      others: g.members
-        .filter((m) => m.id !== g.rep.id)
-        .map((m) => ({ source: m.source, url: m.canonicalUrl })),
-    }));
+    .map((g) => {
+      // Distinct OUTLETS, most-recent url per outlet (members are recency-desc).
+      const byOutlet = new Map<string, string>();
+      for (const m of g.members) if (!byOutlet.has(m.source)) byOutlet.set(m.source, m.canonicalUrl);
+      const others = [...byOutlet]
+        .filter(([source]) => source !== g.rep.source)
+        .map(([source, url]) => ({ source, url }));
+      return {
+        id: g.rep.id,
+        source: g.rep.source,
+        title: g.rep.title,
+        canonicalUrl: g.rep.canonicalUrl,
+        summary: g.rep.summary,
+        publishedAt: g.rep.publishedAt,
+        fetchedAt: g.rep.fetchedAt,
+        sourceCount: byOutlet.size, // distinct outlets, not article count
+        others,
+      };
+    });
 }
