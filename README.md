@@ -72,6 +72,8 @@ At the end of each poll, `src/lib/cluster.ts` groups the same story across sourc
 title-token similarity (normalize + stopwords + Jaccard) within a time window. New articles
 either join an existing cluster (bumping `source_count`) or seed a new one (`representative_article_id`).
 Idempotent — only unclustered articles are touched. Thresholds are tunable constants at the top of the file.
+The feed (`getFeed`) then collapses each cluster into a single story — the most recent member as the
+headline, ordered by latest coverage, with the other sources listed beneath as "also covered by" links.
 
 ## Next: Phase 6 — Keyword scoring → tags
 Extract topics from each article's `title` + `summary` and write `tags` rows — the input the

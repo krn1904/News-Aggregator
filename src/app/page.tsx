@@ -1,10 +1,11 @@
-import { getFeed, type FeedArticle } from "@/lib/feed";
+import { getFeed, type FeedStory } from "@/lib/feed";
 import PollButton from "./PollButton";
 
 /**
- * Phase 2 feed page (also serves as a manual verification tool): lists stored
- * articles newest-first and offers a "Poll now" button to ingest the HN front
- * page. Read straight from the DB (server component) — no personalization yet.
+ * Feed page (also a manual verification tool): lists stored stories newest-first
+ * and offers a "Poll now" button. Phase 5 — each cluster is collapsed into one
+ * story, with the other sources listed under it. Server component, no
+ * personalization yet (that arrives in Phase 8).
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,12 +30,17 @@ function hostOf(url: string): string {
   }
 }
 
+/** "guardian-australia" -> "guardian australia" for nicer display. */
+function label(source: string): string {
+  return source.replace(/-/g, " ");
+}
+
 export default async function Home() {
-  let articles: FeedArticle[] = [];
+  let stories: FeedStory[] = [];
   let error: string | null = null;
 
   try {
-    articles = await getFeed();
+    stories = await getFeed();
   } catch (err) {
     error = err instanceof Error ? err.message : String(err);
   }
@@ -46,8 +52,8 @@ export default async function Home() {
         <PollButton />
       </div>
       <p className="sub">
-        Phase 2 — Hacker News front page, newest first. {articles.length} article
-        {articles.length === 1 ? "" : "s"} stored.
+        Latest stories across your sources, newest first. {stories.length} stor
+        {stories.length === 1 ? "y" : "ies"} shown.
       </p>
 
       {error && (
@@ -58,26 +64,37 @@ export default async function Home() {
         </p>
       )}
 
-      {!error && articles.length === 0 && (
+      {!error && stories.length === 0 && (
         <div className="empty">
-          No articles yet. Hit <strong>Poll now</strong> to fetch the latest stories.
+          No stories yet. Hit <strong>Poll now</strong> to fetch the latest.
         </div>
       )}
 
       <ul className="list">
-        {articles.map((a) => (
-          <li key={a.id} className="item">
-            <a className="title" href={a.canonicalUrl} target="_blank" rel="noopener noreferrer">
-              {a.title}
+        {stories.map((s) => (
+          <li key={s.id} className="item">
+            <a className="title" href={s.canonicalUrl} target="_blank" rel="noopener noreferrer">
+              {s.title}
             </a>
             <div className="meta">
-              <span className="tag">{a.source}</span>
-              {a.sourceCount != null && a.sourceCount > 1 && (
-                <span className="tag sources">{a.sourceCount} sources</span>
-              )}
-              {hostOf(a.canonicalUrl) && <span>{hostOf(a.canonicalUrl)}</span>}
-              <span>{timeAgo(a.publishedAt)}</span>
+              <span className="tag">{label(s.source)}</span>
+              {s.sourceCount > 1 && <span className="tag sources">{s.sourceCount} sources</span>}
+              {hostOf(s.canonicalUrl) && <span>{hostOf(s.canonicalUrl)}</span>}
+              <span>{timeAgo(s.publishedAt)}</span>
             </div>
+            {s.others.length > 0 && (
+              <div className="also">
+                Also covered by:{" "}
+                {s.others.map((o, i) => (
+                  <span key={o.url}>
+                    {i > 0 && " · "}
+                    <a href={o.url} target="_blank" rel="noopener noreferrer">
+                      {label(o.source)}
+                    </a>
+                  </span>
+                ))}
+              </div>
+            )}
           </li>
         ))}
       </ul>

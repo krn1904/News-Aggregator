@@ -137,9 +137,9 @@ Group the same story carried by multiple sources into one `cluster`.
 - [x] Create/extend a `clusters` row, set `representativeArticleId`, bump `sourceCount`
 - [x] Backfill `articles.clusterId` (idempotent: only touches unclustered articles)
 - [x] Runs at the end of each poll (`ingestAllSources`); poll JSON + "Poll now" report grouped counts
-- [x] Feed UI shows a "N sources" badge on stories spanning multiple sources (`getFeed` joins `sourceCount`)
+- [x] Feed collapses each cluster into one story (most-recent headline, ordered by latest coverage) with an "also covered by" source list + "N sources" badge
 
-**Tunables** (in `cluster.ts`): `JACCARD_THRESHOLD` 0.45, `MIN_SHARED_TOKENS` 2, `MATCH_WINDOW_MS` 3 days, `RECENCY_DAYS` 7. Limitation: token matching misses synonyms (e.g. "RBI" vs "Reserve Bank of India") — semantic/embedding matching is a future upgrade if needed. The feed shows a "N sources" badge per story; fully collapsing a cluster into a single expandable entry stays for Phase 10.
+**Tunables** (in `cluster.ts`): `JACCARD_THRESHOLD` 0.45, `MIN_SHARED_TOKENS` 2, `MATCH_WINDOW_MS` 3 days, `RECENCY_DAYS` 7. Limitation: token matching misses synonyms (e.g. "RBI" vs "Reserve Bank of India") — semantic/embedding matching is a future upgrade if needed. The feed collapses each cluster into one story with the other sources listed beneath ("also covered by"); a fully expandable card (each version's own summary/preview) stays for Phase 10.
 
 ---
 

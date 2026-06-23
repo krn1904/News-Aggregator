@@ -1,25 +1,31 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { articles, clusters } from "@/db/schema";
+import { articles } from "@/db/schema";
 
 /**
- * Read stored articles newest-first. Shared by `GET /api/feed` and the feed
- * page (server component). No personalization yet — ranking by learned
- * interest arrives in Phase 7.
+ * Read the feed as a list of STORIES, not raw articles. Phase 5 clustering means
+ * the same story can arrive from several sources; here we collapse each cluster
+ * into one entry (the most recent member as the headline) and list the other
+ * sources. Shared by `GET /api/feed` and the feed page. No personalization yet —
+ * ranking by learned interest arrives in Phase 8.
  */
 export const DEFAULT_LIMIT = 20;
 export const MAX_LIMIT = 100;
 
-export type FeedArticle = {
-  id: number;
+// Recent articles scanned before collapsing into stories. Clusters are time-tight
+// (3-day match window), so a recency window this size captures whole clusters.
+const COLLAPSE_WINDOW = 400;
+
+export type FeedStory = {
+  id: number; // representative article
   source: string;
   title: string;
   canonicalUrl: string;
   summary: string | null;
   publishedAt: Date | null;
   fetchedAt: Date;
-  // How many articles are clustered with this story (1 = unique). Phase 5.
-  sourceCount: number | null;
+  sourceCount: number; // total articles in the cluster (1 = unique)
+  others: { source: string; url: string }[]; // the non-representative members
 };
 
 export function clampLimit(raw: unknown): number {
@@ -27,22 +33,55 @@ export function clampLimit(raw: unknown): number {
   return Number.isFinite(n) && n > 0 ? Math.min(n, MAX_LIMIT) : DEFAULT_LIMIT;
 }
 
-export async function getFeed(limit: number = DEFAULT_LIMIT): Promise<FeedArticle[]> {
-  return db
+export async function getFeed(limit: number = DEFAULT_LIMIT): Promise<FeedStory[]> {
+  const rows = await db
     .select({
       id: articles.id,
+      clusterId: articles.clusterId,
       source: articles.source,
       title: articles.title,
       canonicalUrl: articles.canonicalUrl,
       summary: articles.summary,
       publishedAt: articles.publishedAt,
       fetchedAt: articles.fetchedAt,
-      sourceCount: clusters.sourceCount,
     })
     .from(articles)
-    // Pull in the article's cluster so the feed can show a "N sources" badge.
-    .leftJoin(clusters, eq(articles.clusterId, clusters.clusterId))
-    // Newest published first; nulls last, then by fetch time as a tiebreaker.
     .orderBy(sql`${articles.publishedAt} DESC NULLS LAST`, desc(articles.fetchedAt))
-    .limit(limit);
+    .limit(COLLAPSE_WINDOW);
+
+  type Row = (typeof rows)[number];
+  const timeOf = (r: Row) => (r.publishedAt ?? r.fetchedAt).getTime();
+
+  // Group by cluster; an unclustered article is its own singleton story.
+  const groups = new Map<string, { rep: Row; latest: number; members: Row[] }>();
+  for (const r of rows) {
+    const key = r.clusterId != null ? `c${r.clusterId}` : `a${r.id}`;
+    const t = timeOf(r);
+    const g = groups.get(key);
+    if (!g) {
+      groups.set(key, { rep: r, latest: t, members: [r] });
+    } else {
+      g.members.push(r);
+      if (t > g.latest) g.latest = t;
+      if (t > timeOf(g.rep)) g.rep = r; // headline = most recent member
+    }
+  }
+
+  // Order stories by each cluster's latest coverage, then take the page.
+  return [...groups.values()]
+    .sort((a, b) => b.latest - a.latest)
+    .slice(0, limit)
+    .map((g) => ({
+      id: g.rep.id,
+      source: g.rep.source,
+      title: g.rep.title,
+      canonicalUrl: g.rep.canonicalUrl,
+      summary: g.rep.summary,
+      publishedAt: g.rep.publishedAt,
+      fetchedAt: g.rep.fetchedAt,
+      sourceCount: g.members.length,
+      others: g.members
+        .filter((m) => m.id !== g.rep.id)
+        .map((m) => ({ source: m.source, url: m.canonicalUrl })),
+    }));
 }
