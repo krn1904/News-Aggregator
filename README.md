@@ -59,6 +59,14 @@ manual dispatch, so articles accumulate automatically. One-time setup in GitHub 
 Secrets and variables → Actions: add `APP_URL` (Vercel URL, no trailing slash) and `POLL_SECRET`
 (same as the Vercel env var). The schedule activates once the workflow is on `main`.
 
-## Next: Phase 4 — Clustering
+## Multi-source ingestion (Phase 4)
+Beyond Hacker News, `POST /api/poll` now also pulls RSS news feeds via a generic adapter
+(`src/lib/sources/rss.ts`). Sources live in one registry — `src/lib/sources/index.ts` — where
+each feed is a single `{ name, url }` entry, so adding one is a one-line change. Ingestion is
+resilient: a feed that 404s is logged and skipped, the rest still run, and `/api/poll` reports
+per-source counts. Current feeds target Australia + immigration, India news + markets, and the
+Australian tech sector. Needs `fast-xml-parser` (already in `package.json`).
+
+## Next: Phase 5 — Clustering
 Group the same story carried by multiple sources into one cluster (`representative_article_id`,
-`source_count`), and backfill `articles.cluster_id`.
+`source_count`), and backfill `articles.cluster_id` — now meaningful with several sources flowing in.

@@ -1,4 +1,5 @@
 import { contentHash } from "@/lib/hash";
+import type { NormalizedArticle } from "./types";
 
 /**
  * One source adapter: Hacker News via the public Algolia API (no key needed).
@@ -8,15 +9,6 @@ import { contentHash } from "@/lib/hash";
  */
 
 export const SOURCE = "hackernews" as const;
-
-export type NormalizedArticle = {
-  source: string;
-  title: string;
-  canonicalUrl: string;
-  summary: string | null;
-  publishedAt: Date | null;
-  contentHash: string;
-};
 
 type AlgoliaHit = {
   objectID: string;

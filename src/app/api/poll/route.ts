@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
-import { ingestHackerNews } from "@/lib/ingest";
+import { ingestAllSources } from "@/lib/ingest";
 
 /**
- * Phase 2 ingest job. Fetches one source (Hacker News), normalizes, and stores
- * new articles. Idempotent: a unique `canonical_url` + ON CONFLICT DO NOTHING
- * means re-running inserts 0 duplicates. Called manually now; by a scheduled
- * GitHub Action from Phase 3, authenticated with POLL_SECRET.
+ * Ingest job. Fetches every registered source (Hacker News + RSS news feeds),
+ * normalizes, and stores new articles. Idempotent: a unique `canonical_url` +
+ * ON CONFLICT DO NOTHING means re-running inserts 0 duplicates. Called manually
+ * and by the scheduled GitHub Action (Phase 3), authenticated with POLL_SECRET.
  *
  * Auth: `Authorization: Bearer <POLL_SECRET>`.
  */
@@ -24,7 +24,6 @@ function authorized(req: NextRequest): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-// Phase 2 ingest job. Fetches one source (Hacker News), normalizes, and stores — then `GET /api/feed` to read it back.
 export async function POST(req: NextRequest) {
   if (!process.env.POLL_SECRET) {
     return NextResponse.json(
@@ -37,7 +36,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await ingestHackerNews();
+    const result = await ingestAllSources();
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     return NextResponse.json(

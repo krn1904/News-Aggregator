@@ -27,7 +27,8 @@ export default function PollButton() {
       {state.status === "ok" && (
         <p className="notice" role="status">
           Fetched {state.fetched} · inserted {state.inserted} new · skipped {state.skipped}{" "}
-          duplicate{state.skipped === 1 ? "" : "s"}.
+          duplicate{state.skipped === 1 ? "" : "s"}
+          {state.failed > 0 ? ` · ${state.failed} source${state.failed === 1 ? "" : "s"} failed` : ""}.
         </p>
       )}
       {state.status === "error" && (
