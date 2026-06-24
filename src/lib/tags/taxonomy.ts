@@ -13,7 +13,8 @@ export const TAXONOMY: Record<string, string[]> = {
     "technology", "tech", "software", "hardware", "ai", "artificial intelligence",
     "machine learning", "app", "startup", "chip", "semiconductor", "gadget",
     "smartphone", "iphone", "android", "cloud", "cybersecurity", "cyber", "robot",
-    "programming", "developer", "open source", "gpu", "data center", "quantum",
+    "programming", "developer", "open source", "gpu", "data center", "quantum", "claude", "chatgpt",
+    "gemini", "openai"
   ],
   politics: [
     "election", "parliament", "government", "minister", "senate", "policy",
@@ -52,12 +53,12 @@ export const TAXONOMY: Record<string, string[]> = {
   ],
   india: [
     "india", "indian", "delhi", "mumbai", "bengaluru", "bangalore", "kolkata",
-    "chennai", "modi", "bjp", "lok sabha", "reserve bank of india",
+    "chennai", "modi", "bjp", "lok sabha", "reserve bank of india", "rupee"
   ],
   jobs: [
     "job", "jobs", "hiring", "layoff", "layoffs", "redundancy", "redundancies",
     "employment", "salary", "salaries", "recruitment", "workforce", "vacancy",
-    "career", "unemployment", "wages", "labour market", "labor market", "job market",
+    "career", "unemployment", "wages", "labour market", "labor market", "job market", "IT jobs"
   ],
 };
 
