@@ -2,13 +2,14 @@ import { db } from "@/db";
 import { articles } from "@/db/schema";
 import { sources } from "@/lib/sources";
 import { clusterUnclustered, type ClusterResult } from "@/lib/cluster";
+import { tagUntagged, type TagResult } from "@/lib/tags";
 
 /**
  * Core ingest logic, shared by `POST /api/poll` (secret-gated, for the cron) and
  * the UI "Poll now" server action. Runs every registered source, inserting only
- * new canonical URLs (ON CONFLICT DO NOTHING), then clusters the newly-stored
- * articles (Phase 5). Resilient: one source failing is recorded and the rest
- * still run.
+ * new canonical URLs (ON CONFLICT DO NOTHING), then clusters (Phase 5) and tags
+ * (Phase 6) the newly-stored articles. Resilient: one source failing is recorded
+ * and the rest still run; clustering/tagging failures don't fail the poll.
  */
 export type SourceResult = {
   source: string;
@@ -22,6 +23,7 @@ export type IngestResult = {
   totals: { fetched: number; inserted: number; skipped: number; sources: number; failed: number };
   perSource: SourceResult[];
   clustering: ClusterResult;
+  tagging: TagResult;
 };
 
 export async function ingestAllSources(): Promise<IngestResult> {
@@ -74,5 +76,15 @@ export async function ingestAllSources(): Promise<IngestResult> {
     // swallow — ingestion already succeeded; clustering will retry next poll
   }
 
-  return { totals, perSource, clustering };
+  // Tag anything not yet tagged (keyword + AI fallback). Also non-fatal.
+  let tagging: TagResult = {
+    considered: 0, keywordTagged: 0, aiQueued: 0, aiTagged: 0, aiCalls: 0, aiEnabled: false,
+  };
+  try {
+    tagging = await tagUntagged();
+  } catch {
+    // swallow — untagged articles are retried next poll
+  }
+
+  return { totals, perSource, clustering, tagging };
 }

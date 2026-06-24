@@ -17,12 +17,13 @@ export type PollState =
       skipped: number;
       failed: number;
       grouped: number; // articles attached to an existing/earlier cluster
+      tagged: number; // articles tagged this run (keyword + AI)
     }
   | { status: "error"; message: string };
 
 export async function pollNow(): Promise<PollState> {
   try {
-    const { totals, clustering } = await ingestAllSources();
+    const { totals, clustering, tagging } = await ingestAllSources();
     revalidatePath("/");
     return {
       status: "ok",
@@ -31,6 +32,7 @@ export async function pollNow(): Promise<PollState> {
       skipped: totals.skipped,
       failed: totals.failed,
       grouped: clustering.clustersMatched,
+      tagged: tagging.keywordTagged + tagging.aiTagged,
     };
   } catch (err) {
     return { status: "error", message: err instanceof Error ? err.message : String(err) };
