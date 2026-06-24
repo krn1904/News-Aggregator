@@ -1,4 +1,5 @@
 import type { ScoredTopic } from "./keyword";
+import { canonicalize } from "./canonical";
 
 /**
  * AI tagging via Google Gemini — the open-vocabulary half of Phase 6. Used only
@@ -40,10 +41,14 @@ function buildPrompt(items: AiInput[], knownTopics: string[]): string {
   return [
     "You are tagging news articles by topic for a personalized news app.",
     "Assign 1–3 topics to each article.",
-    "Strongly PREFER reusing a topic from this existing list when one fits:",
+    "ALWAYS reuse a topic from this existing list if one is even roughly applicable:",
     known,
-    "Only invent a new topic if none fit. New topics must be lowercase kebab-case,",
-    "1–3 words, broad enough to recur (e.g. 'natural-disasters', not 'queensland-cyclone-2026').",
+    "Only invent a new topic when the subject is genuinely absent from the list.",
+    "NEVER create a near-synonym of an existing topic — e.g. if 'culture' exists, do",
+    "not output 'art' or 'art-and-culture'; if 'health' exists, do not output",
+    "'public-health'. Prefer a single broad word.",
+    "New topics must be lowercase kebab-case, 1–2 words, broad enough to recur",
+    "(e.g. 'natural-disasters', not 'queensland-cyclone-2026').",
     "",
     "Articles:",
     articles,
@@ -110,7 +115,7 @@ export async function aiTagArticles(
       const seen = new Set<string>();
       const topics: ScoredTopic[] = [];
       for (const raw of row.topics ?? []) {
-        const topic = normTopic(raw);
+        const topic = canonicalize(normTopic(raw)); // collapse near-dup synonyms
         if (topic && !seen.has(topic)) {
           seen.add(topic);
           topics.push({ topic, score: AI_TAG_SCORE });

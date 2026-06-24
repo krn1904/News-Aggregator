@@ -136,6 +136,45 @@ a {
   color: var(--accent);
 }
 
+.vote {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto; /* push the buttons to the right edge of the meta row */
+}
+
+.vbtn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 6px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  line-height: 1;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.vbtn:hover {
+  color: var(--text);
+}
+
+.vbtn.on.up {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.vbtn.on.down {
+  border-color: #4d6fb0;
+  color: #9db4e0;
+}
+
+.vbtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .also {
   margin-top: 8px;
   font-size: 12px;

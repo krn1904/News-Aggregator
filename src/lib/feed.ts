@@ -1,6 +1,6 @@
-import { desc, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { articles } from "@/db/schema";
+import { articles, votes } from "@/db/schema";
 
 /**
  * Read the feed as a list of STORIES, not raw articles. Phase 5 clustering means
@@ -26,6 +26,7 @@ export type FeedStory = {
   fetchedAt: Date;
   sourceCount: number; // total articles in the cluster (1 = unique)
   others: { source: string; url: string }[]; // the non-representative members
+  userVote: number | null; // current vote on the representative article: 1 | -1 | null
 };
 
 export function clampLimit(raw: unknown): number {
@@ -47,8 +48,10 @@ export async function getFeed(
       summary: articles.summary,
       publishedAt: articles.publishedAt,
       fetchedAt: articles.fetchedAt,
+      userVote: votes.value, // ≤1 vote per article, so this leftJoin won't fan out
     })
     .from(articles)
+    .leftJoin(votes, eq(votes.articleId, articles.id))
     .orderBy(sql`${articles.publishedAt} DESC NULLS LAST`, desc(articles.fetchedAt))
     .limit(COLLAPSE_WINDOW);
 
@@ -91,6 +94,7 @@ export async function getFeed(
         fetchedAt: g.rep.fetchedAt,
         sourceCount: byOutlet.size, // distinct outlets, not article count
         others,
+        userVote: g.rep.userVote ?? null,
       };
     });
 }

@@ -21,7 +21,7 @@ Phases are reconstructed from the schema comments in `src/db/schema.ts` (the ori
 | 4     | Multi-source ingestion (RSS news feeds)         | ✅ done |
 | 5     | Clustering (dedup same story across sources)    | ✅ done |
 | 6     | Tagging — keyword seeds + AI growing vocab      | ✅ done |
-| 7     | Voting → `topic_interest` learning loop         | ⬜      |
+| 7     | Voting → `topic_interest` learning loop         | ✅ done |
 | 8     | Personalized ranking in `/api/feed`             | ⬜      |
 | 9     | On-demand enrichment (`body` / `detailSummary`) | ⬜      |
 | 10    | Frontend UI                                     | ⬜      |
@@ -184,16 +184,22 @@ after adding/scoping the key, per Preview/Production scope.
 
 ---
 
-## Phase 7 — Voting → learning loop ⬜ (NEXT)
+## Phase 7 — Voting → learning loop ✅ (DONE)
 
-- [ ] `POST /api/vote` records +1 / -1 into `votes`
-- [ ] Update `topic_interest.score` per topic from votes (weighted by `tags.score`)
-- [ ] Seed `topic_interest` (all start equal at 1)
-- [ ] **Tag-vocabulary canonicalization** (folded in here — this is where drift first
-      costs us): (a) tighten the AI prompt in `src/lib/tags/ai.ts` to bias harder toward
-      reusing an existing tag; (b) alias/merge map + one-time cleanup of existing near-dup
-      topics (`art-and-culture → art`, `public-health → health`, …), minding the tags PK
-      `(article_id, topic)` so a merge doesn't create duplicate rows. (Observed in Phase 6.)
+- [x] `POST /api/vote` records +1 / -1 into `votes` (`src/app/api/vote/route.ts`)
+- [x] `src/lib/vote.ts` `castVote()` — **one vote per article, toggle** semantics; updates
+      `topic_interest.score` per topic, weighted by `tags.score`, clamped [0.1, 5], LR 0.2.
+      Re-voting reverses the prior delta cleanly (no double-count).
+- [x] `topic_interest` seeded lazily at neutral 1 (upsert on first touch) — no pre-seed needed.
+- [x] Thumbs up/down in the feed (`src/app/Vote.tsx`, optimistic); `getFeed` returns `userVote`.
+- [x] **Tag-vocabulary canonicalization:** (a) AI prompt in `ai.ts` tightened to forbid
+      near-synonyms; (b) `src/lib/tags/canonical.ts` alias map applied at write time
+      (`art`/`art-and-culture` → `culture`, `public-health` → `health`). One-time merge SQL
+      for existing dup rows run manually (minds the tags PK).
+
+**Note:** the feed ORDER doesn't change yet — votes move `topic_interest`, but ranking by it is
+**Phase 8**. Verify Phase 7 via `topic_interest` rows moving after votes (`/api/vote` JSON + DB).
+`/api/vote` is public (single-user app, no auth).
 
 ---
 
@@ -220,10 +226,10 @@ Reuses the same LLM API key as Phase 6.
 ## Phase 10 — Frontend UI 🔵
 
 - [x] Feed view consuming `/api/feed` (basic version shipped in Phase 2)
-- [ ] Thumbs up/down wired to `/api/vote` (needs Phase 7)
+- [x] Thumbs up/down wired to `/api/vote` (shipped in Phase 7)
 - [ ] Article detail view triggering enrichment (needs Phase 9)
 - [ ] Styling/polish pass
 
 ---
 
-*Last updated: 2026-06-24 — Phase 6 complete (keyword seeds + Gemini AI growing-vocabulary tagging in the write path; needs GEMINI_API_KEY for the AI half, keyword-only without it). Next: Phase 7 voting → topic_interest learning loop.*
+*Last updated: 2026-06-24 — Phase 7 complete (voting → topic_interest learning loop + thumbs UI + tag canonicalization). Votes move interest but the feed isn't ranked by it yet — that's Phase 8. Next: Phase 8 personalized ranking.*
