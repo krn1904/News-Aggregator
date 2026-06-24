@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { FeedStory } from "@/lib/feed";
+import Vote from "./Vote";
 
 const PAGE = 20;
 
@@ -85,6 +86,7 @@ export default function Feed({ initial }: { initial: FeedStory[] }) {
               {s.sourceCount > 1 && <span className="tag sources">{s.sourceCount} sources</span>}
               {viaHost(s.source, s.canonicalUrl) && <span>via {viaHost(s.source, s.canonicalUrl)}</span>}
               <span>{timeAgo(s.publishedAt)}</span>
+              <Vote articleId={s.id} initial={s.userVote} />
             </div>
             {s.others.length > 0 && (
               <div className="also">
