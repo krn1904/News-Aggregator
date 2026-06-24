@@ -175,13 +175,25 @@ Needs a free LLM API key as a secret (like `POLL_SECRET`).
 (small/fast is enough). Don't strip stopwords for the AI path — give it natural text; stopword
 removal is only for the keyword path.
 
+**Verified live (2026-06-24):** AI confirmed firing (Gemini dashboard usage); coined new topics like
+`weather`, `aviation`, `transportation`, `privacy`, `history`. Diagnostics added: `aiEnabled` flag in
+the poll JSON + `[tags]` server logs. **Known drift observed** — near-dup topics (`art`/`art-and-culture`/
+`culture`, `health`/`public-health`); fix deferred to Phase 7 canonicalization (see below).
+Gotcha learned: env vars (`GEMINI_API_KEY`) bake in at build time — the deployment must be **redeployed**
+after adding/scoping the key, per Preview/Production scope.
+
 ---
 
-## Phase 7 — Voting → learning loop ⬜
+## Phase 7 — Voting → learning loop ⬜ (NEXT)
 
 - [ ] `POST /api/vote` records +1 / -1 into `votes`
-- [ ] Update `topic_interest.score` per topic from votes
+- [ ] Update `topic_interest.score` per topic from votes (weighted by `tags.score`)
 - [ ] Seed `topic_interest` (all start equal at 1)
+- [ ] **Tag-vocabulary canonicalization** (folded in here — this is where drift first
+      costs us): (a) tighten the AI prompt in `src/lib/tags/ai.ts` to bias harder toward
+      reusing an existing tag; (b) alias/merge map + one-time cleanup of existing near-dup
+      topics (`art-and-culture → art`, `public-health → health`, …), minding the tags PK
+      `(article_id, topic)` so a merge doesn't create duplicate rows. (Observed in Phase 6.)
 
 ---
 
