@@ -78,7 +78,7 @@ export async function ingestAllSources(): Promise<IngestResult> {
 
   // Tag anything not yet tagged (keyword + AI fallback). Also non-fatal.
   let tagging: TagResult = {
-    considered: 0, keywordTagged: 0, aiQueued: 0, aiTagged: 0, aiCalls: 0,
+    considered: 0, keywordTagged: 0, aiQueued: 0, aiTagged: 0, aiCalls: 0, aiEnabled: false,
   };
   try {
     tagging = await tagUntagged();

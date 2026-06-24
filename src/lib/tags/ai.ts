@@ -94,12 +94,16 @@ export async function aiTagArticles(
       }),
     });
     if (!res.ok) {
-      console.error(`[ai-tags] Gemini ${res.status} ${res.statusText}`);
+      const body = await res.text().catch(() => "");
+      console.error(`[ai-tags] Gemini HTTP ${res.status} ${res.statusText} ${body.slice(0, 300)}`);
       return result;
     }
     const data = await res.json();
     const text: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) return result;
+    if (!text) {
+      console.error("[ai-tags] Gemini returned no text", JSON.stringify(data).slice(0, 300));
+      return result;
+    }
 
     const parsed = JSON.parse(text) as { results?: { id: number; topics: string[] }[] };
     for (const row of parsed.results ?? []) {
