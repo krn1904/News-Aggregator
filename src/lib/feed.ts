@@ -18,7 +18,7 @@ export const DEFAULT_LIMIT = 20;
 export const MAX_LIMIT = 100;
 
 const COLLAPSE_WINDOW = 400; // recent articles scanned before collapsing/ranking
-const HALF_LIFE_HOURS = 24; // recency half-life
+const HALF_LIFE_HOURS = 48; // recency half-life (balanced: loved topics stay up ~a day)
 const DIVERSITY_DECAY = 0.7; // score multiplier per already-shown story from the same outlet
 
 export type FeedStory = {
@@ -33,6 +33,7 @@ export type FeedStory = {
   others: { source: string; url: string }[];
   userVote: number | null; // 1 | -1 | null
   score: number; // interestScore × recency (1 ≈ neutral & fresh)
+  detailSummary: string | null; // cached AI summary (Phase 9), null until enriched
 };
 
 export function clampLimit(raw: unknown): number {
@@ -55,6 +56,7 @@ export async function getFeed(
       publishedAt: articles.publishedAt,
       fetchedAt: articles.fetchedAt,
       userVote: votes.value,
+      detailSummary: articles.detailSummary,
     })
     .from(articles)
     .leftJoin(votes, eq(votes.articleId, articles.id))
@@ -153,6 +155,7 @@ export async function getFeed(
       others,
       userVote: g.rep.userVote ?? null,
       score: Number(base.toFixed(3)),
+      detailSummary: g.rep.detailSummary ?? null,
     };
   });
 }

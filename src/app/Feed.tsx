@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { FeedStory } from "@/lib/feed";
 import Vote from "./Vote";
+import Summary from "./Summary";
 
 const PAGE = 20;
 
@@ -101,6 +102,7 @@ export default function Feed({ initial }: { initial: FeedStory[] }) {
                 ))}
               </div>
             )}
+            <Summary articleId={s.id} initial={s.detailSummary} />
           </li>
         ))}
       </ul>
