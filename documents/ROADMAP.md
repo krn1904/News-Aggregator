@@ -22,7 +22,7 @@ Phases are reconstructed from the schema comments in `src/db/schema.ts` (the ori
 | 5     | Clustering (dedup same story across sources)    | ✅ done |
 | 6     | Tagging — keyword seeds + AI growing vocab      | ✅ done |
 | 7     | Voting → `topic_interest` learning loop         | ✅ done |
-| 8     | Personalized ranking in `/api/feed`             | ⬜      |
+| 8     | Personalized ranking in `/api/feed`             | ✅ done |
 | 9     | On-demand enrichment (`body` / `detailSummary`) | ⬜      |
 | 10    | Frontend UI                                     | ⬜      |
 
@@ -203,10 +203,21 @@ after adding/scoping the key, per Preview/Production scope.
 
 ---
 
-## Phase 8 — Personalized ranking ⬜
+## Phase 8 — Personalized ranking ✅ (DONE)
 
-- [ ] `/api/feed` ranks articles by `tags.score` × `topic_interest.score`
-- [ ] Recency weighting / decay
+All in `getFeed()` (`src/lib/feed.ts`), so the page + `/api/feed` share the same ranking.
+
+- [x] `interestScore = Σ(tag.score × topic_interest[topic]) / Σ(tag.score)` — weighted average,
+      tag-count-independent; 1 = neutral (untagged or unseen topics default to interest 1).
+- [x] Recency decay: `0.5 ^ (ageHours / HALF_LIFE_HOURS=24)`; `baseScore = interestScore × recency`.
+- [x] **Source-diversity re-rank** (the intra-outlet flooding fix): greedy pick, each story
+      discounted by `DIVERSITY_DECAY=0.7 ^ (# already-shown from its outlet)` so one chatty feed
+      (e.g. Economic Times) can't dominate the top.
+- [x] `FeedStory.score` exposed (in `/api/feed` JSON) for verification.
+
+**Degrades gracefully:** with no votes every `topic_interest` is 1 → `interestScore` = 1 → order is
+pure recency + diversity (≈ the old behaviour). As you vote, upvoted topics float up.
+**Tunables** in `feed.ts`: `HALF_LIFE_HOURS`, `DIVERSITY_DECAY`, `COLLAPSE_WINDOW`.
 
 ---
 
@@ -232,4 +243,4 @@ Reuses the same LLM API key as Phase 6.
 
 ---
 
-*Last updated: 2026-06-24 — Phase 7 complete (voting → topic_interest learning loop + thumbs UI + tag canonicalization). Votes move interest but the feed isn't ranked by it yet — that's Phase 8. Next: Phase 8 personalized ranking.*
+*Last updated: 2026-06-24 — Phase 8 complete (personalized ranking: interest × recency + source-diversity re-rank in getFeed). The full loop now pays off — upvoted topics float to the top. Next: Phase 9 on-demand AI summaries.*
