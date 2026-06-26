@@ -226,8 +226,10 @@ pure recency + diversity (≈ the old behaviour). As you vote, upvoted topics fl
 
 - [x] `src/lib/enrich.ts` `enrichArticle(id)` — **cache-first**: returns stored `detailSummary` if
       already `enriched`; otherwise calls Gemini, stores it, sets `enrichmentStatus`.
-- [x] Reads the article via Gemini **URL-context tool** (`tools:[{url_context:{}}]`) — Gemini fetches
-      + reads the page itself; we store the 3–4 sentence summary in `detail_summary`.
+- [x] Reads the article via **Jina Reader** (`https://r.jina.ai/<url>` → clean text), then summarizes
+      that text with a **plain Gemini call**. (Gemini's `url_context` tool was tried first but failed
+      even on open pages — Guardian, GitHub — so we dropped it for this two-step path, which is reliable
+      and reuses the same `generateContent` call tagging uses.) Stores the 3–4 sentence `detail_summary`.
 - [x] `POST /api/enrich` `{ articleId }`; **on-demand only** (the "Summarize" button), never in a poll.
 - [x] `enrichmentStatus`: `raw` → `enriched`, or `failed` (paywall/blocked/no-key) → UI shows the link only.
 - [x] Feed (`getFeed`/`FeedStory`) carries `detailSummary`, so an already-summarized story is a free
