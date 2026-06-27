@@ -1,80 +1,104 @@
 # News Aggregator
 
 Personalized, multi-source, self-learning news app.
-Stack: **Next.js (TypeScript)** · **Neon** (serverless Postgres) · **Drizzle ORM** · Vercel + GitHub Actions.
+Stack: **Next.js (TypeScript)** · **Neon** (serverless Postgres) · **Drizzle ORM** · Google **Gemini** · Vercel + GitHub Actions.
 
-This repo is at **Phase 2 — Ingest + feed**. News is now fetched from Hacker News,
-stored in Neon, read back over an API, and shown in a basic UI. See
-[`documents/ROADMAP.md`](documents/ROADMAP.md) for the full phase plan and progress.
+It pulls news from several sources, **de-duplicates** the same story across outlets, **tags** each
+article by topic (keyword rules + AI for anything new), **learns** what you like from your 👍/👎,
+and **ranks** your feed accordingly — with on-demand AI **summaries**.
 
-## What's in the app so far
-**Phase 1 — Data layer**
-- `src/db/schema.ts` — all 5 tables (articles, clusters, tags, topic_interest, votes), matching the design doc §10.
-- `src/db/index.ts` — Neon HTTP client (serverless-safe, no connection-pool exhaustion).
-- `drizzle/0000_phase1_init.sql` — generated migration.
-- `src/app/api/health` — liveness probe (no DB).
-- `src/app/api/db-check` — proves the app can read+write Neon.
+- Full phase plan & progress: `[documents/ROADMAP.md](documents/ROADMAP.md)`
+- **How the tagging / scoring / ranking actually works (with a worked example):** `[documents/CORE-LOGIC.md](documents/CORE-LOGIC.md)`
 
-**Phase 2 — Ingest + feed**
-- `POST /api/poll` — fetches the Hacker News front page (Algolia), normalizes, dedups on
-  `canonical_url`, and stores new articles. Idempotent. Auth: `Authorization: Bearer <POLL_SECRET>`.
-- `GET /api/feed` — returns stored articles newest-first (`?limit`, default 20, max 100).
-- `src/lib/sources/hackernews.ts` — source adapter; `src/lib/ingest.ts` / `src/lib/feed.ts` — shared logic.
-- `src/app/page.tsx` — basic feed UI with a **Poll now** button (server action; the secret stays server-side).
 
-## One-time setup (your part)
-1. **Create a free Neon project** at neon.tech → open *Connection Details* → copy the **Pooled** connection string.
-2. `cp .env.example .env.local` and paste it as `DATABASE_URL`. Set a long random `POLL_SECRET`.
-3. Install + create the tables:
-   ```bash
+
+## How it works (one breath)
+
+Two halves that only ever talk through the database:
+
+- **Write path** (`POST /api/poll`, run by a daily cron): fetch every source → normalize → insert new
+articles (dedup on `canonical_url`) → **cluster** same-story duplicates → **tag** by topic.
+- **Read path** (`GET /api/feed`, the page): collapse clusters into one story each → **score** by
+`your interest × freshness` → **re-rank** for source diversity → return a page.
+
+Your 👍/👎 (`POST /api/vote`) update a per-topic interest profile that the read path ranks by.
+See `[documents/CORE-LOGIC.md](documents/CORE-LOGIC.md)` for the formulas and a full example.
+
+## Endpoints
+
+
+| Route           | Method | Purpose                                                                         |
+| --------------- | ------ | ------------------------------------------------------------------------------- |
+| `/api/health`   | GET    | Liveness probe (no DB)                                                          |
+| `/api/db-check` | GET    | Proves the app can read+write Neon                                              |
+| `/api/poll`     | POST   | Ingest + cluster + tag all sources. Auth: `Authorization: Bearer <POLL_SECRET>` |
+| `/api/feed`     | GET    | Ranked feed of stories (`?limit`, `?offset`)                                    |
+| `/api/vote`     | POST   | `{ articleId, value: 1 | -1 }` — record a vote, update topic interest           |
+| `/api/enrich`   | POST   | `{ articleId }` — generate (and cache) an AI summary on demand                  |
+
+
+
+
+## Setup
+
+1. **Neon** — create a free project → copy the **Pooled** connection string.
+2. **Gemini** — get a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
+3. `cp .env.example .env.local` and fill it in (see table below).
+4. Install + create tables:
+  ```bash
    npm install
-   npm run db:migrate     # applies drizzle/0000_phase1_init.sql to Neon
-   ```
+   npm run db:migrate
+  ```
 
-## Verify
+
+
+### Environment variables
+
+
+| Variable         | Where                                             | Purpose                                                                                                                |
+| ---------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`   | `.env.local` + Vercel                             | Neon **pooled** connection string                                                                                      |
+| `POLL_SECRET`    | `.env.local` + Vercel + **GitHub Actions secret** | Bearer secret guarding `/api/poll`                                                                                     |
+| `GEMINI_API_KEY` | `.env.local` + Vercel (**not** GitHub)            | AI tagging (Phase 6) + summaries (Phase 9). Without it, tagging falls back to keyword-only and summaries are disabled. |
+| `APP_URL`        | **GitHub Actions secret**                         | Deployed URL the cron polls (no trailing slash)                                                                        |
+| `GEMINI_MODEL`   | optional                                          | Override the model (defaults to `gemini-2.5-flash`)                                                                    |
+
+
+> Gotcha: env vars are baked in at **build time** — after adding/changing one in Vercel you must **redeploy**, and the variable's **environment scope** (Production / Preview) must match the URL you hit.
+
+
+
+## Run & verify
+
 ```bash
 npm run dev
-# Phase 1 — data layer:
-curl localhost:3000/api/health     # -> { ok: true, ... }
-curl localhost:3000/api/db-check   # -> { ok: true, roundTrip: { topic: "__db_check__", ... } }
-
-# Phase 2 — ingest + feed:
-curl -X POST localhost:3000/api/poll -H "Authorization: Bearer $POLL_SECRET"  # -> { fetched, inserted, skipped }
-curl localhost:3000/api/feed        # -> { ok: true, count, articles: [...] }
+curl localhost:3000/api/health
+curl -X POST localhost:3000/api/poll -H "Authorization: Bearer $POLL_SECRET"   # -> { totals, perSource, clustering, tagging }
+curl "localhost:3000/api/feed?limit=5"                                          # -> { ok, count, articles:[...] }
 ```
-Run the poll twice — the second run should report `inserted: 0` (dedup works).
-Or just open `http://localhost:3000` and click **Poll now**.
+
+Or open `http://localhost:3000`, click **Poll now**, then thumbs up/down stories and **Summarize**.
+
+## Scheduled polling
+
+`.github/workflows/poll.yml` calls the deployed `/api/poll` daily (20:00 UTC = 06:00 Melbourne) and on
+manual dispatch. Add `APP_URL` + `POLL_SECRET` as GitHub Actions secrets; the schedule activates once the
+workflow is on `main`.
 
 ## Useful scripts
-| command | does |
-|---|---|
-| `npm run dev` | local dev server |
+
+
+| command               | does                                          |
+| --------------------- | --------------------------------------------- |
+| `npm run dev`         | local dev server                              |
 | `npm run db:generate` | regenerate migration after editing the schema |
-| `npm run db:migrate` | apply migrations to Neon |
-| `npm run typecheck` | `tsc --noEmit` |
+| `npm run db:migrate`  | apply migrations to Neon                      |
+| `npm run typecheck`   | `tsc --noEmit`                                |
 
-## Scheduled polling (Phase 3)
-`.github/workflows/poll.yml` calls the deployed `POST /api/poll` daily (06:00 UTC) and on
-manual dispatch, so articles accumulate automatically. One-time setup in GitHub → Settings →
-Secrets and variables → Actions: add `APP_URL` (Vercel URL, no trailing slash) and `POLL_SECRET`
-(same as the Vercel env var). The schedule activates once the workflow is on `main`.
 
-## Multi-source ingestion (Phase 4)
-Beyond Hacker News, `POST /api/poll` now also pulls RSS news feeds via a generic adapter
-(`src/lib/sources/rss.ts`). Sources live in one registry — `src/lib/sources/index.ts` — where
-each feed is a single `{ name, url }` entry, so adding one is a one-line change. Ingestion is
-resilient: a feed that 404s is logged and skipped, the rest still run, and `/api/poll` reports
-per-source counts. Current feeds target Australia + immigration, India news + markets, and the
-Australian tech sector. Needs `fast-xml-parser` (already in `package.json`).
 
-## Clustering (Phase 5)
-At the end of each poll, `src/lib/cluster.ts` groups the same story across sources using
-title-token similarity (normalize + stopwords + Jaccard) within a time window. New articles
-either join an existing cluster (bumping `source_count`) or seed a new one (`representative_article_id`).
-Idempotent — only unclustered articles are touched. Thresholds are tunable constants at the top of the file.
-The feed (`getFeed`) then collapses each cluster into a single story — the most recent member as the
-headline, ordered by latest coverage, with the other sources listed beneath as "also covered by" links.
 
-## Next: Phase 6 — Keyword scoring → tags
-Extract topics from each article's `title` + `summary` and write `tags` rows — the input the
-learning loop (Phase 7) will weight by your votes.
+## Tuning
+
+The behaviour knobs (ranking half-life, diversity strength, tag keyword lists, learning rate, etc.)
+and how to change them are documented in `[documents/CORE-LOGIC.md](documents/CORE-LOGIC.md#tuning)`.
