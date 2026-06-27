@@ -23,7 +23,7 @@ Phases are reconstructed from the schema comments in `src/db/schema.ts` (the ori
 | 6     | Tagging — keyword seeds + AI growing vocab      | ✅ done |
 | 7     | Voting → `topic_interest` learning loop         | ✅ done |
 | 8     | Personalized ranking in `/api/feed`             | ✅ done |
-| 9     | On-demand enrichment (`body` / `detailSummary`) | ⬜      |
+| 9     | On-demand enrichment (AI summaries)             | ✅ done |
 | 10    | Frontend UI                                     | ⬜      |
 
 
@@ -209,7 +209,8 @@ All in `getFeed()` (`src/lib/feed.ts`), so the page + `/api/feed` share the same
 
 - [x] `interestScore = Σ(tag.score × topic_interest[topic]) / Σ(tag.score)` — weighted average,
       tag-count-independent; 1 = neutral (untagged or unseen topics default to interest 1).
-- [x] Recency decay: `0.5 ^ (ageHours / HALF_LIFE_HOURS=24)`; `baseScore = interestScore × recency`.
+- [x] Recency decay: `0.5 ^ (ageHours / HALF_LIFE_HOURS=48)`; `baseScore = interestScore × recency`.
+      (48h chosen with Krn — "balanced": a loved topic stays competitive ~a day before recency wins.)
 - [x] **Source-diversity re-rank** (the intra-outlet flooding fix): greedy pick, each story
       discounted by `DIVERSITY_DECAY=0.7 ^ (# already-shown from its outlet)` so one chatty feed
       (e.g. Economic Times) can't dominate the top.
@@ -221,16 +222,22 @@ pure recency + diversity (≈ the old behaviour). As you vote, upvoted topics fl
 
 ---
 
-## Phase 9 — On-demand enrichment (AI summaries) ⬜
+## Phase 9 — On-demand enrichment (AI summaries) ✅ (DONE)
 
-- [ ] On article open (button), fetch full `body`, generate `detailSummary` via LLM
-- [ ] Set `enrichmentStatus`: `raw` → `enriched` (or `failed`)
-- [ ] Only enrich on demand (cost control) — otherwise just show the source link
+- [x] `src/lib/enrich.ts` `enrichArticle(id)` — **cache-first**: returns stored `detailSummary` if
+      already `enriched`; otherwise calls Gemini, stores it, sets `enrichmentStatus`.
+- [x] Reads the article via **Jina Reader** (`https://r.jina.ai/<url>` → clean text), then summarizes
+      that text with a **plain Gemini call**. (Gemini's `url_context` tool was tried first but failed
+      even on open pages — Guardian, GitHub — so we dropped it for this two-step path, which is reliable
+      and reuses the same `generateContent` call tagging uses.) Stores the 3–4 sentence `detail_summary`.
+- [x] `POST /api/enrich` `{ articleId }`; **on-demand only** (the "Summarize" button), never in a poll.
+- [x] `enrichmentStatus`: `raw` → `enriched`, or `failed` (paywall/blocked/no-key) → UI shows the link only.
+- [x] Feed (`getFeed`/`FeedStory`) carries `detailSummary`, so an already-summarized story is a free
+      show/hide toggle (`src/app/Summary.tsx`), no re-call.
 
-**Reading the article (decided with Krn):** LLMs don't fetch URLs by default. Two free routes —
-Gemini **URL Context** tool (pass the URL, Gemini reads it) or **Jina Reader** (`https://r.jina.ai/<url>`
-→ clean text → any model). Paywalled articles can't be read → fall back to showing the link only.
-Reuses the same LLM API key as Phase 6.
+**Notes:** reuses `GEMINI_API_KEY` (Phase 6). `body` column stays empty — URL-context doesn't return raw
+text; Jina Reader could capture full body later if needed. Paywalled sites can't be read → graceful
+"failed" → link only. `maxDuration=60` on the route (Gemini fetch+read can be slow).
 
 ---
 
@@ -243,4 +250,4 @@ Reuses the same LLM API key as Phase 6.
 
 ---
 
-*Last updated: 2026-06-24 — Phase 8 complete (personalized ranking: interest × recency + source-diversity re-rank in getFeed). The full loop now pays off — upvoted topics float to the top. Next: Phase 9 on-demand AI summaries.*
+*Last updated: 2026-06-24 — Phase 9 complete (on-demand Gemini URL-context summaries, cached, with graceful failure). Only Phase 10 (frontend polish) remains. Engine done: ingest → cluster → tag → learn → rank → summarize.*

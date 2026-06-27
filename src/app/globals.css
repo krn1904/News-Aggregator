@@ -181,6 +181,44 @@ a {
   color: var(--muted);
 }
 
+.summary-wrap {
+  display: block;
+  margin-top: 8px;
+}
+
+.link-btn {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+.link-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.summary {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.5;
+  border-left: 2px solid var(--border);
+  padding-left: 10px;
+}
+
+.summary.err {
+  color: var(--muted);
+  border-left-color: #5b2533;
+}
+
 .also a {
   color: var(--muted);
   text-decoration: underline;
