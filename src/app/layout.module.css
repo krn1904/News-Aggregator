@@ -1,5 +1,5 @@
 .main {
   max-width: var(--maxw);
   margin: 0 auto;
-  padding: 0 0 72px;
+  padding: 0 34px 72px; /* horizontal padding lives here so cards/rules share one width */
 }

@@ -18,7 +18,7 @@
   --skeleton-hi: #f3efe5;
 
   /* shape + layout */
-  --maxw: 720px; /* feed column width */
+  --maxw: 1040px; /* feed column width (was 720 — widened to fill large screens) */
   --radius-pill: 999px;
   --radius-card: 3px;
 

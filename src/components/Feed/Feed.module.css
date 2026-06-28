@@ -16,7 +16,7 @@
 
 .result {
   margin: 0;
-  padding: 12px 34px;
+  padding: 12px 0;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--muted);

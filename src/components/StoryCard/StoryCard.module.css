@@ -1,7 +1,7 @@
 .card {
   display: flex;
   gap: 20px;
-  padding: 22px 34px;
+  padding: 22px 0; /* horizontal padding comes from the column (.main) */
   border-bottom: 1px solid var(--line);
 }
 
