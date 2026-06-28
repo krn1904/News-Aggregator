@@ -1,0 +1,66 @@
+/* Single column by default; two columns once there's room (reading order
+   left→right, then down). Cards align to the top of each row so a shorter card
+   doesn't stretch — an expanded summary just leaves whitespace beside it. */
+.grid {
+  display: block;
+}
+
+@media (min-width: 1100px) {
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 40px;
+    align-items: start;
+  }
+}
+
+.polling {
+  margin-bottom: 4px;
+}
+
+.bar {
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--accent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: dispatch-shimmer 1.3s linear infinite;
+}
+
+.result {
+  margin: 0;
+  padding: 12px 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+}
+
+.more {
+  display: block;
+  margin: 24px auto 0;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  padding: 9px 18px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.more:hover {
+  color: var(--ink);
+  border-color: var(--muted);
+}
+
+.more:disabled {
+  cursor: default;
+  opacity: 0.6;
+}

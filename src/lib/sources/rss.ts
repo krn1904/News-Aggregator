@@ -1,11 +1,10 @@
 import { XMLParser } from "fast-xml-parser";
-import { contentHash } from "@/lib/hash";
-import type { NormalizedArticle } from "./types";
+import type { RawArticle } from "./types";
 
 /**
  * Generic RSS/Atom adapter. Most news portals publish RSS, so one parser covers
  * many sources — each feed is just a { name, url } entry in the registry.
- * Normalizes into the same shape as the Hacker News adapter.
+ * Returns RAW articles; the central ingest step strips HTML + decodes entities.
  */
 
 export type FeedDef = { name: string; url: string };
@@ -31,41 +30,6 @@ function text(v: unknown): string {
     if (typeof o["#text"] === "string") return o["#text"];
   }
   return "";
-}
-
-function safeCodePoint(n: number): string {
-  try {
-    return Number.isFinite(n) && n > 0 ? String.fromCodePoint(n) : "";
-  } catch {
-    return "";
-  }
-}
-
-/**
- * Decode entities the XML parser leaves behind. It already handles &amp;/&lt;/…
- * and &#39;, but NOT other numeric refs (&#233; → é, &#8217; → ’), so feeds with
- * accents or smart quotes arrive raw. Decode decimal + hex + the common named.
- */
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => safeCodePoint(parseInt(h, 16)))
-    .replace(/&#(\d+);/g, (_, d) => safeCodePoint(parseInt(d, 10)))
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'");
-}
-
-/** Strip HTML tags, decode entities, then collapse whitespace. */
-function toPlainSummary(html: string): string | null {
-  const stripped = decodeEntities(html.replace(/<[^>]*>/g, " "))
-    .replace(/\s+/g, " ")
-    .replace(/\s+([.,;:!?])/g, "$1") // tidy "word ." -> "word." left by tag stripping
-    .trim();
-  if (!stripped) return null;
-  return stripped.length > 400 ? stripped.slice(0, 397) + "…" : stripped;
 }
 
 /** RSS <link> is a string; Atom <link> is (an array of) { @_href, @_rel }. */
@@ -103,8 +67,8 @@ function asArray<T>(v: T | T[] | undefined): T[] {
   return Array.isArray(v) ? v : [v];
 }
 
-/** Fetch one RSS/Atom feed and normalize it. */
-export async function fetchRss(def: FeedDef): Promise<NormalizedArticle[]> {
+/** Fetch one RSS/Atom feed as raw articles (ingest does the cleaning + hashing). */
+export async function fetchRss(def: FeedDef): Promise<RawArticle[]> {
   const res = await fetch(def.url, {
     headers: { accept: "application/rss+xml, application/xml, text/xml, */*", "user-agent": "news-aggregator/1.0" },
   });
@@ -121,15 +85,15 @@ export async function fetchRss(def: FeedDef): Promise<NormalizedArticle[]> {
       ? asArray(doc.feed.entry)
       : [];
 
-  const out: NormalizedArticle[] = [];
+  const out: RawArticle[] = [];
   for (const item of items) {
-    const title = decodeEntities(text(item.title)).trim();
+    const title = text(item.title).trim();
     const canonicalUrl = extractLink(item);
     if (!title || !canonicalUrl) continue; // skip malformed entries
 
-    const summary = toPlainSummary(
-      text(item.description) || text(item.summary) || text(item["content:encoded"])
-    );
+    // Raw blurb (HTML/entities and all) — ingest's normalizeArticle cleans it.
+    const summary =
+      text(item.description) || text(item.summary) || text(item["content:encoded"]) || null;
 
     out.push({
       source: def.name,
@@ -137,7 +101,6 @@ export async function fetchRss(def: FeedDef): Promise<NormalizedArticle[]> {
       canonicalUrl,
       summary,
       publishedAt: parseDate(item),
-      contentHash: contentHash([canonicalUrl, title, summary]),
     });
   }
 

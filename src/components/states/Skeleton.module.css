@@ -1,0 +1,60 @@
+.card {
+  display: flex;
+  gap: 20px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 30px;
+  flex-shrink: 0;
+}
+
+.body {
+  flex: 1;
+}
+
+.block {
+  display: block;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--skeleton) 25%,
+    var(--skeleton-hi) 50%,
+    var(--skeleton) 75%
+  );
+  background-size: 200% 100%;
+  animation: dispatch-shimmer 1.3s linear infinite;
+}
+
+.railStub {
+  width: 26px;
+  height: 22px;
+  border-radius: 5px;
+}
+
+.kicker {
+  width: 120px;
+  height: 10px;
+  margin-bottom: 12px;
+}
+
+.headline {
+  width: 100%;
+  height: 22px;
+  margin-bottom: 8px;
+}
+
+.headlineShort {
+  width: 60%;
+  height: 22px;
+  margin-bottom: 14px;
+}
+
+.dek {
+  width: 85%;
+  height: 14px;
+}

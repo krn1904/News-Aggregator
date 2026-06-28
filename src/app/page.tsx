@@ -1,12 +1,11 @@
 import { getFeed, type FeedStory } from "@/lib/feed";
-import PollButton from "./PollButton";
-import Feed from "./Feed";
+import Feed from "@/components/Feed/Feed";
+import EmptyState from "@/components/EmptyState/EmptyState";
 
 /**
- * Feed page (also a manual verification tool): collapsed stories newest-first
- * with a "Poll now" button and "Load more" pagination. Server component fetches
- * the first page; the client `Feed` handles appending more. No personalization
- * yet (that arrives in Phase 8).
+ * Feed page. Server-renders the first ranked page; the client <Feed> handles
+ * voting, summaries, load-more, and refresh-after-poll. The Masthead + theme +
+ * poll provider are in the root layout shell.
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,29 +22,22 @@ export default async function Home() {
     error = err instanceof Error ? err.message : String(err);
   }
 
-  return (
-    <main className="wrap">
-      <div className="header">
-        <h1>News Aggregator</h1>
-        <PollButton />
-      </div>
-      <p className="sub">Latest stories across your sources, newest first.</p>
+  if (error) {
+    return (
+      <p
+        style={{
+          padding: "48px 34px",
+          fontFamily: "var(--font-serif)",
+          fontStyle: "italic",
+          color: "var(--muted)",
+        }}
+      >
+        Couldn’t load the feed: {error}
+      </p>
+    );
+  }
 
-      {error && (
-        <p className="notice err">
-          Couldn&apos;t load the feed: {error}
-          <br />
-          (Is <code>DATABASE_URL</code> set and migrated?)
-        </p>
-      )}
+  if (stories.length === 0) return <EmptyState />;
 
-      {!error && stories.length === 0 && (
-        <div className="empty">
-          No stories yet. Hit <strong>Poll now</strong> to fetch the latest.
-        </div>
-      )}
-
-      {stories.length > 0 && <Feed initial={stories} />}
-    </main>
-  );
+  return <Feed initial={stories} />;
 }

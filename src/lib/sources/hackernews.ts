@@ -1,5 +1,4 @@
-import { contentHash } from "@/lib/hash";
-import type { NormalizedArticle } from "./types";
+import type { RawArticle } from "./types";
 
 /**
  * One source adapter: Hacker News via the public Algolia API (no key needed).
@@ -25,15 +24,15 @@ type AlgoliaResponse = { hits: AlgoliaHit[] };
 
 const ENDPOINT = "https://hn.algolia.com/api/v1/search?tags=front_page";
 
-/** Fetch the HN front page and normalize it into NormalizedArticle[]. */
-export async function fetchHackerNews(): Promise<NormalizedArticle[]> {
+/** Fetch the HN front page as raw articles (ingest does the cleaning + hashing). */
+export async function fetchHackerNews(): Promise<RawArticle[]> {
   const res = await fetch(ENDPOINT, { headers: { accept: "application/json" } });
   if (!res.ok) {
     throw new Error(`Hacker News fetch failed: ${res.status} ${res.statusText}`);
   }
   const data = (await res.json()) as AlgoliaResponse;
 
-  const normalized: NormalizedArticle[] = [];
+  const normalized: RawArticle[] = [];
   for (const hit of data.hits ?? []) {
     if (!hit.title) continue; // skip comment-only / malformed rows
 
@@ -41,7 +40,7 @@ export async function fetchHackerNews(): Promise<NormalizedArticle[]> {
     const canonicalUrl =
       hit.url ?? `https://news.ycombinator.com/item?id=${hit.objectID}`;
 
-    // HN has no blurb; synthesize a lightweight Tier-1 summary for later scoring.
+    // Raw blurb: the post's text (HTML — ingest cleans it) or a points/comments line.
     const summary =
       hit.story_text?.trim() ||
       [
@@ -61,7 +60,6 @@ export async function fetchHackerNews(): Promise<NormalizedArticle[]> {
       canonicalUrl,
       summary,
       publishedAt: publishedAt && !isNaN(publishedAt.getTime()) ? publishedAt : null,
-      contentHash: contentHash([canonicalUrl, hit.title, summary]),
     });
   }
 

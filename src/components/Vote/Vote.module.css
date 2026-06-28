@@ -1,0 +1,52 @@
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 30px;
+  flex-shrink: 0;
+}
+
+.btn {
+  width: 26px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 9px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.btn:hover {
+  border-color: var(--muted);
+  color: var(--ink);
+}
+
+.btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.up.up {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.down.down {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--bg);
+}
+
+.score {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}

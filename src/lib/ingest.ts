@@ -1,8 +1,30 @@
 import { db } from "@/db";
 import { articles } from "@/db/schema";
 import { sources } from "@/lib/sources";
+import type { NormalizedArticle, RawArticle } from "@/lib/sources/types";
+import { cleanTitle, toPlainSummary } from "@/lib/sources/text";
+import { contentHash } from "@/lib/hash";
 import { clusterUnclustered, type ClusterResult } from "@/lib/cluster";
 import { tagUntagged, type TagResult } from "@/lib/tags";
+
+/**
+ * The ONE place every article is normalized, regardless of source: strip HTML +
+ * decode entities from title/summary, then compute the contentHash from the
+ * cleaned values. Adapters return raw text; this guarantees nothing leaks markup
+ * into the DB even if a future adapter forgets to sanitize.
+ */
+function normalizeArticle(raw: RawArticle): NormalizedArticle {
+  const title = cleanTitle(raw.title) || raw.title;
+  const summary = toPlainSummary(raw.summary);
+  return {
+    source: raw.source,
+    title,
+    canonicalUrl: raw.canonicalUrl,
+    summary,
+    publishedAt: raw.publishedAt,
+    contentHash: contentHash([raw.canonicalUrl, title, summary]),
+  };
+}
 
 /**
  * Core ingest logic, shared by `POST /api/poll` (secret-gated, for the cron) and
@@ -31,7 +53,7 @@ export async function ingestAllSources(): Promise<IngestResult> {
 
   for (const source of sources) {
     try {
-      const items = await source.fetch();
+      const items = (await source.fetch()).map(normalizeArticle); // central sanitize + hash
       const fetched = items.length;
 
       let inserted = 0;

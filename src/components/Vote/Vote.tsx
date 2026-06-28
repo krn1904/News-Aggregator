@@ -1,14 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import styles from "./Vote.module.css";
 
 /**
- * Thumbs up/down for a story (acts on its representative article). Optimistic:
- * updates immediately, reconciles with the server's returned state, reverts on
- * error. Toggle semantics live on the server — we just send the clicked
- * direction and trust the response.
+ * Vertical vote rail: ▲ / score / ▼. Optimistic toggle — clicking the active
+ * arrow clears it. Logic unchanged from the original; only restyled.
  */
-export default function Vote({ articleId, initial }: { articleId: number; initial: number | null }) {
+export default function Vote({
+  articleId,
+  initial,
+  score,
+}: {
+  articleId: number;
+  initial: number | null;
+  score: number;
+}) {
   const [vote, setVote] = useState<number | null>(initial);
   const [pending, setPending] = useState(false);
 
@@ -27,32 +34,31 @@ export default function Vote({ articleId, initial }: { articleId: number; initia
       if (!data.ok) throw new Error(data.error ?? "vote failed");
       setVote(data.value === 0 ? null : data.value);
     } catch {
-      setVote(prev); // revert on failure
+      setVote(prev);
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <span className="vote">
+    <div className={styles.rail}>
       <button
-        className={`vbtn${vote === 1 ? " on up" : ""}`}
+        className={`${styles.btn} ${vote === 1 ? styles.up : ""}`}
         onClick={() => cast(1)}
         disabled={pending}
         aria-label="More like this"
-        title="More like this"
       >
         ▲
       </button>
+      <span className={styles.score}>{score.toFixed(1)}</span>
       <button
-        className={`vbtn${vote === -1 ? " on down" : ""}`}
+        className={`${styles.btn} ${vote === -1 ? styles.down : ""}`}
         onClick={() => cast(-1)}
         disabled={pending}
         aria-label="Less like this"
-        title="Less like this"
       >
         ▼
       </button>
-    </span>
+    </div>
   );
 }

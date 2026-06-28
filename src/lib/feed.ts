@@ -33,6 +33,7 @@ export type FeedStory = {
   userVote: number | null; // 1 | -1 | null
   score: number; // interest × freshness (1 ≈ neutral & fresh)
   detailSummary: string | null; // cached AI summary, null until enriched
+  topics: string[]; // the headline article's topics (for #tag chips)
 };
 
 export function clampLimit(raw: unknown): number {
@@ -56,7 +57,7 @@ type ArticleRow = {
 
 // A cluster of articles collapsed into a single story.
 type Story = { rep: ArticleRow; latestMs: number; members: ArticleRow[] };
-type ScoredStory = { story: Story; score: number };
+type ScoredStory = { story: Story; score: number; topics: string[] };
 
 /** When the story happened — published time, or fetch time if unknown. */
 const timeMs = (a: ArticleRow): number => (a.publishedAt ?? a.fetchedAt).getTime();
@@ -123,10 +124,13 @@ async function scoreStories(stories: Story[]): Promise<ScoredStory[]> {
   const now = Date.now();
 
   return stories.map((story) => {
-    const topicMatch = interestScore(tagsByArticle.get(story.rep.id) ?? [], interest);
+    const storyTags = tagsByArticle.get(story.rep.id) ?? [];
+    const topicMatch = interestScore(storyTags, interest);
     const ageHours = Math.max(0, (now - story.latestMs) / 3_600_000);
     const freshness = Math.pow(0.5, ageHours / HALF_LIFE_HOURS);
-    return { story, score: topicMatch * freshness };
+    // topics shown as #tags, strongest first
+    const topics = [...storyTags].sort((a, b) => b.score - a.score).map((t) => t.topic);
+    return { story, score: topicMatch * freshness, topics };
   });
 }
 
@@ -182,7 +186,7 @@ function orderByInterestAndDiversity(scored: ScoredStory[]): ScoredStory[] {
 }
 
 /** Step 5 — shape one ranked story into the object the UI consumes. */
-function toFeedStory({ story, score }: ScoredStory): FeedStory {
+function toFeedStory({ story, score, topics }: ScoredStory): FeedStory {
   const rep = story.rep;
 
   // One (most-recent) link per distinct outlet, minus the headline's own outlet.
@@ -207,6 +211,7 @@ function toFeedStory({ story, score }: ScoredStory): FeedStory {
     userVote: rep.userVote ?? null,
     score: Number(score.toFixed(3)), // the interest×freshness value (not the diversity-adjusted one)
     detailSummary: rep.detailSummary ?? null,
+    topics,
   };
 }
 
