@@ -30,13 +30,13 @@ button {
 }
 
 /* Shared animations referenced by component modules (keyframes are global). */
-@keyframes dispatch-spin {
+@keyframes brief-spin {
   to {
     transform: rotate(360deg);
   }
 }
 
-@keyframes dispatch-shimmer {
+@keyframes brief-shimmer {
   0% {
     background-position: -200% 0;
   }
@@ -45,7 +45,7 @@ button {
   }
 }
 
-@keyframes dispatch-pulse {
+@keyframes brief-pulse {
   0%,
   100% {
     opacity: 1;

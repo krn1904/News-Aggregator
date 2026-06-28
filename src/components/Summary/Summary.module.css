@@ -45,7 +45,7 @@
   border: 2px solid var(--line);
   border-top-color: var(--accent);
   border-radius: 50%;
-  animation: dispatch-spin 0.7s linear infinite;
+  animation: brief-spin 0.7s linear infinite;
 }
 
 .inset {
@@ -116,5 +116,5 @@
     var(--skeleton) 75%
   );
   background-size: 200% 100%;
-  animation: dispatch-shimmer 1.3s linear infinite;
+  animation: brief-shimmer 1.3s linear infinite;
 }

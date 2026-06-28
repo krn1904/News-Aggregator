@@ -18,7 +18,7 @@ export default function Masthead() {
       <div className={styles.inner}>
         <div className={styles.top}>
           <div>
-            <h1 className={styles.wordmark}>Dispatch</h1>
+            <h1 className={styles.wordmark}>Brief</h1>
             <p className={styles.tagline}>your feed, learned one read at a time</p>
           </div>
           <div className={styles.actions}>

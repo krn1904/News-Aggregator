@@ -19,13 +19,13 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dispatch — your feed, learned one read at a time",
+  title: "Brief — your feed, learned one read at a time",
   description: "Personalized, multi-source, self-learning news.",
 };
 
 // Runs before paint: set the theme from localStorage / OS preference so there's
 // no light-then-dark flash on load. Mirrors the key ThemeToggle writes.
-const themeScript = `(function(){try{var t=localStorage.getItem('dispatch-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='light';}})();`;
+const themeScript = `(function(){try{var t=localStorage.getItem('brief-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='light';}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

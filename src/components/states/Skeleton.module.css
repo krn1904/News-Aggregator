@@ -27,7 +27,7 @@
     var(--skeleton) 75%
   );
   background-size: 200% 100%;
-  animation: dispatch-shimmer 1.3s linear infinite;
+  animation: brief-shimmer 1.3s linear infinite;
 }
 
 .railStub {
