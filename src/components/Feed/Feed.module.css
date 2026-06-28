@@ -1,16 +1,22 @@
-/* Single column by default; two columns once there's room (reading order
-   left→right, then down). Cards align to the top of each row so a shorter card
-   doesn't stretch — an expanded summary just leaves whitespace beside it. */
+/* Single column by default; two columns once there's room. Uses CSS multi-column
+   (masonry-style) so cards pack flush in each column with no gaps when a short
+   card sits beside a tall one. Reading order flows down the left column, then the
+   right. To revert to one column, delete the @media block below. */
 .grid {
   display: block;
 }
 
 @media (min-width: 1100px) {
   .grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    column-count: 2;
     column-gap: 40px;
-    align-items: start;
+  }
+
+  /* Keep each card whole — never let a story split across the two columns. */
+  .grid > * {
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid; /* Safari */
+    page-break-inside: avoid; /* older engines */
   }
 }
 
