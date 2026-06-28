@@ -24,7 +24,7 @@ Phases are reconstructed from the schema comments in `src/db/schema.ts` (the ori
 | 7     | Voting → `topic_interest` learning loop         | ✅ done |
 | 8     | Personalized ranking in `/api/feed`             | ✅ done |
 | 9     | On-demand enrichment (AI summaries)             | ✅ done |
-| 10    | Frontend UI                                     | ⬜      |
+| 10    | Frontend UI — "Dispatch" broadsheet design      | ✅ done |
 
 
 > Phase 4 (multi-source) was inserted ahead of clustering — clustering only does meaningful work once ≥2 sources exist. Later phases renumbered accordingly.
@@ -241,13 +241,29 @@ text; Jina Reader could capture full body later if needed. Paywalled sites can't
 
 ---
 
-## Phase 10 — Frontend UI 🔵
+## Phase 10 — Frontend UI ✅ (DONE) — "Dispatch" broadsheet
 
-- [x] Feed view consuming `/api/feed` (basic version shipped in Phase 2)
-- [x] Thumbs up/down wired to `/api/vote` (shipped in Phase 7)
-- [ ] Article detail view triggering enrichment (needs Phase 9)
-- [ ] Styling/polish pass
+Implements the `design_handoff_broadsheet_feed` spec: editorial broadsheet look, light/dark themes,
+masthead, vote rail, AI-brief inset, empty + polling states.
+
+**Architecture (3-layer, built for scale):**
+- [x] `src/styles/tokens.css` — design tokens (light + dark via `[data-theme]`); single source of colour/type.
+- [x] `next/font` (Newsreader + JetBrains Mono) loaded in root layout; no-flash theme script before paint.
+- [x] Per-component **CSS Modules** in `src/components/*` — `Masthead`, `ThemeToggle`, `PollButton`,
+      `PollProvider`, `StoryCard`, `Vote`, `Summary`, `Feed`, `EmptyState`, `states/Skeleton`.
+- [x] `globals.css` shrunk to resets + shared keyframes; layout shell renders Masthead once.
+
+**Decisions (with Krn):** AI Brief sits **below** the dek (not replacing it); kicker label = **"AI Brief"**.
+
+**Behaviour:** light/dark toggle (persisted, no flash); vote rail (▲ score ▼); "✦ AI Brief · Gemini"
+inset with loading shimmer + error states; empty state; polling state (shimmer bar + skeleton cards,
+driven by a shared `PollProvider`); load-more pill. All API logic unchanged — pure restyle/restructure.
+
+> Note: built the shell in the **root layout** (not a `(app)` route group) — the route group is the
+> right move once auth/extra pages land, but couldn't drop the old `app/page.tsx` via a group without a
+> duplicate-route conflict. Easy to migrate later.
+> Old single-file UI (`src/app/{Feed,Vote,Summary,PollButton}.tsx`) is superseded — `git rm` them.
 
 ---
 
-*Last updated: 2026-06-24 — Phase 9 complete (on-demand Gemini URL-context summaries, cached, with graceful failure). Only Phase 10 (frontend polish) remains. Engine done: ingest → cluster → tag → learn → rank → summarize.*
+*Last updated: 2026-06-27 — Phase 10 complete ("Dispatch" broadsheet UI: tokens + CSS Modules + theming + masthead + restyled feed/vote/summary + empty/polling states). All 10 phases done. 🎉*

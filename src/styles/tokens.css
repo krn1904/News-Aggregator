@@ -1,0 +1,41 @@
+/**
+ * Design tokens — the single source of truth for colour, type, space.
+ * Themed by [data-theme] on <html>. No component hardcodes a hex value; they all
+ * read var(--…). A re-theme (or a 3rd theme) is a one-file change here.
+ *
+ * --font-newsreader / --font-jetbrains are injected by next/font in layout.tsx.
+ */
+:root,
+[data-theme="light"] {
+  --bg: #f7f4ec; /* paper */
+  --ink: #1c1a17; /* primary text */
+  --muted: #6f6657; /* secondary text */
+  --line: #ddd5c6; /* hairline rules */
+  --accent: #a8331f; /* editorial red */
+  --accent-soft: #f0e2dd; /* AI-brief inset bg */
+  --ok: #1f7a48; /* poll success */
+  --skeleton: #e8e2d3;
+  --skeleton-hi: #f3efe5;
+
+  /* shape + layout */
+  --maxw: 720px; /* feed column width */
+  --radius-pill: 999px;
+  --radius-card: 3px;
+
+  /* type families (serif + mono come from next/font; sans is the system stack) */
+  --font-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
+  --font-sans: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+}
+
+[data-theme="dark"] {
+  --bg: #17150f;
+  --ink: #ece6d8;
+  --muted: #9a917f;
+  --line: #322d23;
+  --accent: #d9694f;
+  --accent-soft: #2e2018;
+  --ok: #5fbf86;
+  --skeleton: #2a2419;
+  --skeleton-hi: #3a3325;
+}
