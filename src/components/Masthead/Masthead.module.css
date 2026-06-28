@@ -38,6 +38,43 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-sans);
+}
+
+.email {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.signOut {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--muted);
+  padding: 8px 10px;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.signOut:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .rule {

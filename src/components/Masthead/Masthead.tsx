@@ -1,9 +1,14 @@
 import ThemeToggle from "@/components/ThemeToggle/ThemeToggle";
 import PollButton from "@/components/PollButton/PollButton";
 import styles from "./Masthead.module.css";
+import { auth, signOut } from "../../../auth";
+import { isAdminEmail } from "@/lib/admin";
 
 /** The editorial masthead: wordmark + tagline, theme/poll controls, dated sub-bar. */
-export default function Masthead() {
+export default async function Masthead() {
+  const session = await auth();
+  const email = session?.user?.email ?? null;
+  const isAdmin = isAdminEmail(email);
   const today = new Date()
     .toLocaleDateString("en-AU", {
       weekday: "long",
@@ -22,8 +27,23 @@ export default function Masthead() {
             <p className={styles.tagline}>your feed, learned one read at a time</p>
           </div>
           <div className={styles.actions}>
+            {email && (
+              <div className={styles.account}>
+                <span className={styles.email}>{email}</span>
+                <form
+                  action={async () => {
+                    "use server";
+                    await signOut({ redirectTo: "/login" });
+                  }}
+                >
+                  <button className={styles.signOut} type="submit">
+                    Sign out
+                  </button>
+                </form>
+              </div>
+            )}
             <ThemeToggle />
-            <PollButton />
+            {isAdmin && <PollButton />}
           </div>
         </div>
 
@@ -31,7 +51,7 @@ export default function Masthead() {
 
         <div className={styles.subbar}>
           <span>Your Feed · Personalized</span>
-          <span>Fresh stories fetched daily · 6:00 AM AEST</span>
+          <span>Fresh stories fetched by scheduled workflow</span>
           <span>{today}</span>
         </div>
       </div>
