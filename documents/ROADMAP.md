@@ -13,24 +13,26 @@ Phases are reconstructed from the schema comments in `src/db/schema.ts` (the ori
 ## Status at a glance
 
 
-| Phase | Theme                                           | Status |
-| ----- | ----------------------------------------------- | ------ |
-| 1     | Data layer                                      | ✅ done |
+| Phase | Theme                                               | Status |
+| ----- | --------------------------------------------------- | ------ |
+| 1     | Data layer                                          | ✅ done |
 | 2     | Ingest + feed (`/api/poll`, `/api/feed`) + basic UI | ✅ done |
-| 3     | Scheduled polling (GitHub Actions cron)         | ✅ done |
-| 4     | Multi-source ingestion (RSS news feeds)         | ✅ done |
-| 5     | Clustering (dedup same story across sources)    | ✅ done |
-| 6     | Tagging — keyword seeds + AI growing vocab      | ✅ done |
-| 7     | Voting → `topic_interest` learning loop         | ✅ done |
-| 8     | Personalized ranking in `/api/feed`             | ✅ done |
-| 9     | On-demand enrichment (AI summaries)             | ✅ done |
-| 10    | Frontend UI — "Dispatch" broadsheet design      | ✅ done |
-| 11    | Auth + multi-user personalization               | 🔵 in progress |
+| 3     | Scheduled polling (GitHub Actions cron)             | ✅ done |
+| 4     | Multi-source ingestion (RSS news feeds)             | ✅ done |
+| 5     | Clustering (dedup same story across sources)        | ✅ done |
+| 6     | Tagging — keyword seeds + AI growing vocab          | ✅ done |
+| 7     | Voting → `topic_interest` learning loop             | ✅ done |
+| 8     | Personalized ranking in `/api/feed`                 | ✅ done |
+| 9     | On-demand enrichment (AI summaries)                 | ✅ done |
+| 10    | Frontend UI — "Dispatch" broadsheet design          | ✅ done |
+| 11    | Auth + multi-user personalization                   | ✅ done |
 
 
 > Phase 4 (multi-source) was inserted ahead of clustering — clustering only does meaningful work once ≥2 sources exist. Later phases renumbered accordingly.
 
 ---
+
+
 
 ## Hosting / setup checklist (pre-Phase-2)
 
@@ -39,10 +41,12 @@ Phases are reconstructed from the schema comments in `src/db/schema.ts` (the ori
 - [x] `POLL_SECRET` set (long random string)
 - [x] `npm install` + `npm run db:migrate` run (5 tables exist)
 - [x] `curl localhost:3000/api/db-check` → `ok: true`
-- [ ] Deployed to Vercel with env vars set
-- [ ] Hosted `/api/db-check` → `ok: true`
+- [x] Deployed to Vercel with env vars set
+- [x] Hosted `/api/db-check` → `ok: true`
 
 ---
+
+
 
 ## Phase 1 — Data layer ✅
 
@@ -68,6 +72,8 @@ Phases are reconstructed from the schema comments in `src/db/schema.ts` (the ori
 
 
 ---
+
+
 
 ## Phase 2 — Ingest + feed ✅ (DONE)
 
@@ -104,6 +110,8 @@ Goal: get real articles flowing in from one source and back out as JSON. No lear
 
 ---
 
+
+
 ## Phase 3 — Scheduled polling ✅ (DONE)
 
 - [x] GitHub Actions workflow on a cron — `.github/workflows/poll.yml` (daily 06:00 UTC + manual `workflow_dispatch`)
@@ -112,9 +120,11 @@ Goal: get real articles flowing in from one source and back out as JSON. No lear
 
 **Setup required (one-time, in GitHub):** Settings → Secrets and variables → Actions → add
 `APP_URL` (Vercel URL, no trailing slash) and `POLL_SECRET` (same value as the Vercel env var).
-The `schedule:` trigger only fires once the workflow is on the **default branch (`main`)**.
+The `schedule:` trigger only fires once the workflow is on the **default branch (**`main`**)**.
 
 ---
+
+
 
 ## Phase 4 — Multi-source ingestion ✅ (DONE)
 
@@ -130,6 +140,8 @@ Add real news sources beyond Hacker News so clustering (Phase 5) has duplicates 
 
 ---
 
+
+
 ## Phase 5 — Clustering ✅ (DONE)
 
 Group the same story carried by multiple sources into one `cluster`.
@@ -144,6 +156,8 @@ Group the same story carried by multiple sources into one `cluster`.
 
 ---
 
+
+
 ## Phase 6 — Tagging (keyword seeds + AI growing vocabulary) ✅ (DONE)
 
 Tag each article with topics so the vote loop (Phase 7) and ranking (Phase 8) have signal.
@@ -152,13 +166,20 @@ Tags table is `(articleId, topic, score)`, PK `(articleId, topic)` — append-on
 are a shared, **growing** vocabulary (free text, so new topics are first-class with no schema change).
 
 **Two-tier engine (decided with Krn):**
+
 - [x] **Seed taxonomy** (`src/lib/tags/taxonomy.ts` + `keyword.ts`) — broad buckets + interest topics,
-      each a keyword list; word-boundary matched against `title` (weighted ×2) + `summary`. Free, instant.
+  ```
+  each a keyword list; word-boundary matched against `title` (weighted ×2) + `summary`. Free, instant.
+  ```
 - [x] **AI fallback** (`src/lib/tags/ai.ts`, Gemini) — only for articles the keywords didn't match;
-      batched (12/call), passed the article + current distinct-tag list, reuses or coins a kebab tag.
-      Graceful: no key / error → article stays untagged, retried next poll. Never throws.
+  ```
+  batched (12/call), passed the article + current distinct-tag list, reuses or coins a kebab tag.
+  Graceful: no key / error → article stays untagged, retried next poll. Never throws.
+  ```
 - [x] **Orchestrator** (`src/lib/tags/index.ts` `tagUntagged()`) — keyword-first, AI for the rest
-      (capped 48/run), inserts `tags` rows `(articleId, topic, score)` with ON CONFLICT DO NOTHING.
+  ```
+  (capped 48/run), inserts `tags` rows `(articleId, topic, score)` with ON CONFLICT DO NOTHING.
+  ```
 - [x] Wired into `ingestAllSources()` after clustering (non-fatal); poll JSON + "Poll now" report counts.
 - [x] `GEMINI_API_KEY` documented in `.env.example` (set in `.env.local` + Vercel; not GitHub).
 
@@ -185,36 +206,50 @@ after adding/scoping the key, per Preview/Production scope.
 
 ---
 
+
+
 ## Phase 7 — Voting → learning loop ✅ (DONE)
 
 - [x] `POST /api/vote` records +1 / -1 into `votes` (`src/app/api/vote/route.ts`)
 - [x] `src/lib/vote.ts` `castVote()` — **one vote per article, toggle** semantics; updates
-      `topic_interest.score` per topic, weighted by `tags.score`, clamped [0.1, 5], LR 0.2.
-      Re-voting reverses the prior delta cleanly (no double-count).
+  ```
+  `topic_interest.score` per topic, weighted by `tags.score`, clamped [0.1, 5], LR 0.2.
+  Re-voting reverses the prior delta cleanly (no double-count).
+  ```
 - [x] `topic_interest` seeded lazily at neutral 1 (upsert on first touch) — no pre-seed needed.
 - [x] Thumbs up/down in the feed (`src/app/Vote.tsx`, optimistic); `getFeed` returns `userVote`.
 - [x] **Tag-vocabulary canonicalization:** (a) AI prompt in `ai.ts` tightened to forbid
-      near-synonyms; (b) `src/lib/tags/canonical.ts` alias map applied at write time
-      (`art`/`art-and-culture` → `culture`, `public-health` → `health`). One-time merge SQL
-      for existing dup rows run manually (minds the tags PK).
+  ```
+  near-synonyms; (b) `src/lib/tags/canonical.ts` alias map applied at write time
+  (`art`/`art-and-culture` → `culture`, `public-health` → `health`). One-time merge SQL
+  for existing dup rows run manually (minds the tags PK).
+  ```
 
 **Note:** the feed ORDER doesn't change yet — votes move `topic_interest`, but ranking by it is
 **Phase 8**. Verify Phase 7 via `topic_interest` rows moving after votes (`/api/vote` JSON + DB).
-`/api/vote` is public (single-user app, no auth).
+Phase 11 later made `/api/vote` authenticated and scoped by `user_id`.
 
 ---
+
+
 
 ## Phase 8 — Personalized ranking ✅ (DONE)
 
 All in `getFeed()` (`src/lib/feed.ts`), so the page + `/api/feed` share the same ranking.
 
 - [x] `interestScore = Σ(tag.score × topic_interest[topic]) / Σ(tag.score)` — weighted average,
-      tag-count-independent; 1 = neutral (untagged or unseen topics default to interest 1).
+  ```
+  tag-count-independent; 1 = neutral (untagged or unseen topics default to interest 1).
+  ```
 - [x] Recency decay: `0.5 ^ (ageHours / HALF_LIFE_HOURS=48)`; `baseScore = interestScore × recency`.
-      (48h chosen with Krn — "balanced": a loved topic stays competitive ~a day before recency wins.)
+  ```
+  (48h chosen with Krn — "balanced": a loved topic stays competitive ~a day before recency wins.)
+  ```
 - [x] **Source-diversity re-rank** (the intra-outlet flooding fix): greedy pick, each story
-      discounted by `DIVERSITY_DECAY=0.7 ^ (# already-shown from its outlet)` so one chatty feed
-      (e.g. Economic Times) can't dominate the top.
+  ```
+  discounted by `DIVERSITY_DECAY=0.7 ^ (# already-shown from its outlet)` so one chatty feed
+  (e.g. Economic Times) can't dominate the top.
+  ```
 - [x] `FeedStory.score` exposed (in `/api/feed` JSON) for verification.
 
 **Degrades gracefully:** with no votes every `topic_interest` is 1 → `interestScore` = 1 → order is
@@ -223,18 +258,26 @@ pure recency + diversity (≈ the old behaviour). As you vote, upvoted topics fl
 
 ---
 
+
+
 ## Phase 9 — On-demand enrichment (AI summaries) ✅ (DONE)
 
 - [x] `src/lib/enrich.ts` `enrichArticle(id)` — **cache-first**: returns stored `detailSummary` if
-      already `enriched`; otherwise calls Gemini, stores it, sets `enrichmentStatus`.
+  ```
+  already `enriched`; otherwise calls Gemini, stores it, sets `enrichmentStatus`.
+  ```
 - [x] Reads the article via **Jina Reader** (`https://r.jina.ai/<url>` → clean text), then summarizes
-      that text with a **plain Gemini call**. (Gemini's `url_context` tool was tried first but failed
-      even on open pages — Guardian, GitHub — so we dropped it for this two-step path, which is reliable
-      and reuses the same `generateContent` call tagging uses.) Stores the 3–4 sentence `detail_summary`.
+  ```
+  that text with a **plain Gemini call**. (Gemini's `url_context` tool was tried first but failed
+  even on open pages — Guardian, GitHub — so we dropped it for this two-step path, which is reliable
+  and reuses the same `generateContent` call tagging uses.) Stores the 3–4 sentence `detail_summary`.
+  ```
 - [x] `POST /api/enrich` `{ articleId }`; **on-demand only** (the "Summarize" button), never in a poll.
 - [x] `enrichmentStatus`: `raw` → `enriched`, or `failed` (paywall/blocked/no-key) → UI shows the link only.
 - [x] Feed (`getFeed`/`FeedStory`) carries `detailSummary`, so an already-summarized story is a free
-      show/hide toggle (`src/app/Summary.tsx`), no re-call.
+  ```
+  show/hide toggle (`src/app/Summary.tsx`), no re-call.
+  ```
 
 **Notes:** reuses `GEMINI_API_KEY` (Phase 6). `body` column stays empty — URL-context doesn't return raw
 text; Jina Reader could capture full body later if needed. Paywalled sites can't be read → graceful
@@ -242,16 +285,21 @@ text; Jina Reader could capture full body later if needed. Paywalled sites can't
 
 ---
 
+
+
 ## Phase 10 — Frontend UI ✅ (DONE) — "Dispatch" broadsheet
 
 Implements the `design_handoff_broadsheet_feed` spec: editorial broadsheet look, light/dark themes,
 masthead, vote rail, AI-brief inset, empty + polling states.
 
 **Architecture (3-layer, built for scale):**
+
 - [x] `src/styles/tokens.css` — design tokens (light + dark via `[data-theme]`); single source of colour/type.
 - [x] `next/font` (Newsreader + JetBrains Mono) loaded in root layout; no-flash theme script before paint.
-- [x] Per-component **CSS Modules** in `src/components/*` — `Masthead`, `ThemeToggle`, `PollButton`,
-      `PollProvider`, `StoryCard`, `Vote`, `Summary`, `Feed`, `EmptyState`, `states/Skeleton`.
+- [x] Per-component **CSS Modules** in `src/components/`* — `Masthead`, `ThemeToggle`, `PollButton`,
+  ```
+  `PollProvider`, `StoryCard`, `Vote`, `Summary`, `Feed`, `EmptyState`, `states/Skeleton`.
+  ```
 - [x] `globals.css` shrunk to resets + shared keyframes; layout shell renders Masthead once.
 
 **Decisions (with Krn):** AI Brief sits **below** the dek (not replacing it); kicker label = **"AI Brief"**.
@@ -267,7 +315,9 @@ driven by a shared `PollProvider`); load-more pill. All API logic unchanged — 
 
 ---
 
-## Phase 11 — Auth + multi-user personalization 🔵 (IN PROGRESS)
+
+
+## Phase 11 — Auth + multi-user personalization ✅ (DONE)
 
 Turn the app from single-tenant (one global taste profile) into multi-user: signup/login,
 and a personalized feed + interests **scoped per user**. The personalization engine
@@ -280,36 +330,46 @@ two per-person tables, (c) thread `userId` through the feed + vote logic.
 `votes` + `topic_interest` data is **wiped** on migration (clean `NOT NULL user_id`, no backfill).
 Shared content (`articles`, `clusters`, `tags`) stays global — news is ingested once for everyone;
 only the *ranking* is personalized. Signup is open to all emails; usage limits for AI summaries are
-deferred to a later phase. The manual "Poll now" button is admin-only via `ADMIN_EMAILS`.
+deferred to a later phase. Onboarding interests are skipped for now; new users start neutral and
+personalize through votes. The manual "Poll now" button is admin-only via `ADMIN_EMAILS`.
 
 **Phase 11.1 — Schema & migration (wipe approach)**
+
 - [x] Auth.js Drizzle-adapter tables: `users`, `accounts`, `sessions`, `verification_tokens`;
-      add `password_hash` to `users` (null for OAuth-only users)
+  ```
+  add `password_hash` to `users` (null for OAuth-only users)
+  ```
 - [x] `topic_interest`: PK `topic` → composite `(user_id, topic)`; `user_id` FK → `users` (`onDelete: cascade`)
 - [x] `votes`: add `user_id` FK → `users` (`onDelete: cascade`) + unique `(user_id, article_id)`
 - [x] Migration `TRUNCATE`s `votes` + `topic_interest`, adds columns/constraints as `NOT NULL` (no backfill)
-- [ ] `npm run db:generate` + `db:migrate` (`db:generate` done; `db:migrate` intentionally not run from this branch because it wipes existing votes/interests)
+- [x] `npm run db:generate` + `db:migrate` run against Neon
 
 **Phase 11.2 — Auth.js wiring (email/password + OAuth)**
+
 - [x] `next-auth@beta` (v5) + `@auth/drizzle-adapter` + `bcryptjs`
 - [x] Credentials provider (signup hashes with bcrypt + inserts; sign-in verifies) — forces **JWT** sessions
 - [x] OAuth provider(s): Google + GitHub when configured; also uses JWT sessions (so `sessions` table unused — expected)
 - [x] `middleware.ts` gating everything except `/login`, `/signup`, auth API routes, and `/api/poll`
 
 **Phase 11.3 — UI**
+
 - [x] `/login` + `/signup` pages: email/password form **+** OAuth buttons
 - [ ] `(app)` route group for authed pages (deferred; middleware gates the existing root page for now)
 - [x] `Masthead`: signed-in user + sign-out (beside `ThemeToggle` / admin-only `PollButton`)
 
 **Phase 11.4 — Scope logic by user**
+
 - [x] `getFeed(userId, …)` — filter the `votes` leftJoin and `loadInterest()` by `userId`
 - [x] `castVote(userId, articleId, value)` — scope select/delete/insert + `topic_interest` upsert (now keyed `(user_id, topic)`)
 - [x] `/api/feed`, `/api/vote`, `/api/enrich` — read session → pass `userId`, 401 if unauthenticated;
-      `page.tsx` + `actions.ts` read session server-side. `/api/poll` stays a global system endpoint.
+  ```
+  `page.tsx` + `actions.ts` read session server-side. `/api/poll` stays a global system endpoint.
+  ```
 
-**Phase 11.5 — Onboarding interests**
-- [ ] Post-signup interest picker (topics from the `src/lib/tags/` taxonomy) → seed `topic_interest`
-      rows (e.g. score 1.5) so the first feed is personalized, not neutral
+**Phase 11.5 — Onboarding interests (deferred)**
+
+- [~] Post-signup interest picker skipped for now; users start neutral and personalize through votes
+
 - [ ] (Optional, later) settings page to edit interests
 
 **Later DB hygiene:** add a retention/archive policy for old `articles`/`clusters`/`tags` once the app
@@ -317,4 +377,4 @@ has enough real usage to choose a cutoff safely.
 
 ---
 
-*Last updated: 2026-06-28 — Phase 11 auth + per-user personalization wiring implemented through login/signup, Google/GitHub OAuth config, middleware, admin-only poll, and user-scoped feed/vote/session routes. Onboarding interests, `(app)` route group cleanup, destructive `db:migrate`, and later AI/DB usage limits remain pending. Phases 1–10 done.*
+*Last updated: 2026-06-28 — Phase 11 done for current scope: auth + per-user personalization wiring implemented through login/signup, Google/GitHub OAuth config, middleware, admin-only poll, user-scoped feed/vote/session routes, and Neon migration. Onboarding interests are intentionally deferred;* `(app)` *route group cleanup, settings page, and later AI/DB usage limits remain future work. Phases 1–10 done.*

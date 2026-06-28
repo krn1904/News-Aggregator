@@ -16,13 +16,17 @@ WRITE PATH  (POST /api/poll, run by the daily cron)
    [ Postgres:  articles · clusters · tags · users · topic_interest · votes ]
         ▲                                                │
         │ per-user votes update per-user interests       ▼
-  POST /api/vote                          READ PATH (GET /api/feed, the page)
+  POST /api/vote                          READ PATH (GET /api/feed, signed-in page)
                                           collapse clusters → SCORE → diversify → page
 ```
 
 The two halves never call each other — they share only the database. The write path **produces and
 stores** (cluster ids, tags); the read path **reads and ranks**. This is why `getFeed` never tags or
 clusters: that work was already done at poll time.
+
+Auth.js gates the reader-facing app. Shared content is global, but `/api/feed`, `/api/vote`, and
+`/api/enrich` require a signed-in user so votes, ranking, and future AI limits can be scoped per
+account. `/api/poll` remains a system endpoint guarded by `POLL_SECRET`.
 
 ### The tables
 | Table | Holds | Written by |
@@ -178,7 +182,8 @@ Clicking **Summarize** calls `/api/enrich`:
    call summarizes it in 3–4 sentences; we store it and set `enrichment_status = 'enriched'`.
 3. Paywalled/blocked pages → `failed` → the UI just shows the link.
 
-On-demand only (never during a poll) keeps cost tiny; caching means a second open is free.
+On-demand only (never during a poll) keeps cost tiny; caching means a second open is free. The route
+requires a signed-in user now so per-account summary limits can be added later.
 
 ---
 
