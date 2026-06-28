@@ -24,6 +24,11 @@ function configuredOAuthProviders() {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: process.env.AUTH_SECRET,
+  // The production app sits behind Vercel/custom-domain proxy headers.
+  // Auth.js can infer this on Vercel, but setting it explicitly avoids
+  // `UntrustedHost` configuration errors on custom domains.
+  trustHost: true,
   adapter: DrizzleAdapter(db, {
     usersTable: users,
     accountsTable: accounts,
