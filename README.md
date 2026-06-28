@@ -6,6 +6,8 @@ Stack: **Next.js (TypeScript)** · **Neon** (serverless Postgres) · **Drizzle O
 It pulls news from several sources, **de-duplicates** the same story across outlets, **tags** each
 article by topic (keyword rules + AI for anything new), **learns** what you like from your 👍/👎,
 and **ranks** your signed-in feed accordingly — with on-demand AI **summaries**.
+Summaries are cached at the article level, so once any user summarizes a story, every signed-in user
+can open that same summary without another AI call.
 
 - Full phase plan & progress: `[documents/ROADMAP.md](documents/ROADMAP.md)`
 - **How the tagging / scoring / ranking actually works (with a worked example):** `[documents/CORE-LOGIC.md](documents/CORE-LOGIC.md)`
@@ -37,7 +39,7 @@ See `[documents/CORE-LOGIC.md](documents/CORE-LOGIC.md)` for the formulas and a 
 | `/api/auth/*`   | GET/POST | Auth.js login, OAuth callback, and session endpoints                            |
 | `/api/feed`     | GET    | Signed-in user's ranked feed of stories (`?limit`, `?offset`)                   |
 | `/api/vote`     | POST   | Signed-in user's `{ articleId, value: 1 | -1 }` vote → update topic interest    |
-| `/api/enrich`   | POST   | Signed-in user's `{ articleId }` request → generate/cache an AI summary         |
+| `/api/enrich`   | POST   | Signed-in user's `{ articleId }` request → generate/cache a shared article summary |
 
 
 

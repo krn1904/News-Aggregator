@@ -183,7 +183,9 @@ Clicking **Summarize** calls `/api/enrich`:
 3. Paywalled/blocked pages → `failed` → the UI just shows the link.
 
 On-demand only (never during a poll) keeps cost tiny; caching means a second open is free. The route
-requires a signed-in user now so per-account summary limits can be added later.
+requires a signed-in user now so per-account summary limits can be added later. The cache is shared
+across users: `detail_summary` is stored on the global `articles` row, so once any user summarizes an
+article, other signed-in users can read the cached summary without another Gemini call.
 
 ---
 
