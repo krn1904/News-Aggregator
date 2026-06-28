@@ -5,7 +5,7 @@ Stack: **Next.js (TypeScript)** · **Neon** (serverless Postgres) · **Drizzle O
 
 It pulls news from several sources, **de-duplicates** the same story across outlets, **tags** each
 article by topic (keyword rules + AI for anything new), **learns** what you like from your 👍/👎,
-and **ranks** your feed accordingly — with on-demand AI **summaries**.
+and **ranks** your signed-in feed accordingly — with on-demand AI **summaries**.
 
 - Full phase plan & progress: `[documents/ROADMAP.md](documents/ROADMAP.md)`
 - **How the tagging / scoring / ranking actually works (with a worked example):** `[documents/CORE-LOGIC.md](documents/CORE-LOGIC.md)`
@@ -18,10 +18,12 @@ Two halves that only ever talk through the database:
 
 - **Write path** (`POST /api/poll`, run by a daily cron): fetch every source → normalize → insert new
 articles (dedup on `canonical_url`) → **cluster** same-story duplicates → **tag** by topic.
+- **Auth path** (Auth.js): signup/login with email/password or OAuth; `votes` and `topic_interest`
+are scoped per user.
 - **Read path** (`GET /api/feed`, the page): collapse clusters into one story each → **score** by
 `your interest × freshness` → **re-rank** for source diversity → return a page.
 
-Your 👍/👎 (`POST /api/vote`) update a per-topic interest profile that the read path ranks by.
+Your 👍/👎 (`POST /api/vote`) update your per-topic interest profile that the read path ranks by.
 See `[documents/CORE-LOGIC.md](documents/CORE-LOGIC.md)` for the formulas and a full example.
 
 ## Endpoints
@@ -32,9 +34,10 @@ See `[documents/CORE-LOGIC.md](documents/CORE-LOGIC.md)` for the formulas and a 
 | `/api/health`   | GET    | Liveness probe (no DB)                                                          |
 | `/api/db-check` | GET    | Proves the app can read+write Neon                                              |
 | `/api/poll`     | POST   | Ingest + cluster + tag all sources. Auth: `Authorization: Bearer <POLL_SECRET>` |
-| `/api/feed`     | GET    | Ranked feed of stories (`?limit`, `?offset`)                                    |
-| `/api/vote`     | POST   | `{ articleId, value: 1 | -1 }` — record a vote, update topic interest           |
-| `/api/enrich`   | POST   | `{ articleId }` — generate (and cache) an AI summary on demand                  |
+| `/api/auth/*`   | GET/POST | Auth.js login, OAuth callback, and session endpoints                            |
+| `/api/feed`     | GET    | Signed-in user's ranked feed of stories (`?limit`, `?offset`)                   |
+| `/api/vote`     | POST   | Signed-in user's `{ articleId, value: 1 | -1 }` vote → update topic interest    |
+| `/api/enrich`   | POST   | Signed-in user's `{ articleId }` request → generate/cache an AI summary         |
 
 
 
@@ -79,10 +82,10 @@ See `[documents/CORE-LOGIC.md](documents/CORE-LOGIC.md)` for the formulas and a 
 npm run dev
 curl localhost:3000/api/health
 curl -X POST localhost:3000/api/poll -H "Authorization: Bearer $POLL_SECRET"   # -> { totals, perSource, clustering, tagging }
-curl "localhost:3000/api/feed?limit=5"                                          # -> { ok, count, articles:[...] }
 ```
 
-Or open `http://localhost:3000`, click **Poll now**, then thumbs up/down stories and **Summarize**.
+Or open `http://localhost:3000`, sign in, then thumbs up/down stories and **Summarize**.
+The manual **Poll now** button appears only when your email is listed in `ADMIN_EMAILS`.
 
 ## Scheduled polling
 
