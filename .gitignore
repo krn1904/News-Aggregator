@@ -5,3 +5,6 @@ node_modules
 .DS_Store
 *.tsbuildinfo
 next-env.d.ts
+
+# Local design notes / scratch docs (not part of the app)
+documents/

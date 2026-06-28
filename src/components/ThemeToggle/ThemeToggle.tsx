@@ -22,7 +22,7 @@ export default function ThemeToggle() {
     const next: Theme = theme === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
     try {
-      localStorage.setItem("dispatch-theme", next);
+      localStorage.setItem("brief-theme", next);
     } catch {
       /* ignore storage errors */
     }

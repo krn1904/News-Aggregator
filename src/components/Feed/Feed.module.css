@@ -1,17 +1,6 @@
-/* Single column by default; two columns once there's room (reading order
-   left→right, then down). Cards align to the top of each row so a shorter card
-   doesn't stretch — an expanded summary just leaves whitespace beside it. */
+/* Single-column feed: stories stack top-to-bottom in strict ranked order. */
 .grid {
   display: block;
-}
-
-@media (min-width: 1100px) {
-  .grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    column-gap: 40px;
-    align-items: start;
-  }
 }
 
 .polling {
@@ -27,7 +16,7 @@
     transparent 100%
   );
   background-size: 200% 100%;
-  animation: dispatch-shimmer 1.3s linear infinite;
+  animation: brief-shimmer 1.3s linear infinite;
 }
 
 .result {
