@@ -64,7 +64,7 @@ export default function Feed({ initial }: { initial: FeedStory[] }) {
         </p>
       )}
 
-      <div>
+      <div className={styles.grid}>
         {stories.map((s) => (
           <StoryCard key={s.id} story={s} />
         ))}
