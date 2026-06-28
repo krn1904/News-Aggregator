@@ -2,15 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { castVote } from "@/lib/vote";
 
 /**
- * Phase 7. Records a thumbs up/down on an article and updates topic interest.
+ * Phase 11. Records a thumbs up/down on an article and updates topic interest
+ * for the signed-in user.
  * Body: `{ articleId: number, value: 1 | -1 }`. Toggle semantics (voting the
- * same way again clears it). Single-user app — public, no auth.
+ * same way again clears it).
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    // Auth.js session lookup lands in Phase 11.2/11.4. The database and
+    // learning loop are already user-scoped, so anonymous writes must stop here.
+    const userId: string | null = null;
+    if (!userId) {
+      return NextResponse.json({ ok: false, error: "Authentication required" }, { status: 401 });
+    }
+
     const body = (await req.json().catch(() => ({}))) as { articleId?: unknown; value?: unknown };
     const articleId = Number(body.articleId);
     const value = Number(body.value);
@@ -21,7 +29,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await castVote(articleId, value as 1 | -1);
+    const result = await castVote(userId, articleId, value as 1 | -1);
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     return NextResponse.json(

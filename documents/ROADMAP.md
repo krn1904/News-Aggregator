@@ -25,7 +25,7 @@ Phases are reconstructed from the schema comments in `src/db/schema.ts` (the ori
 | 8     | Personalized ranking in `/api/feed`             | ✅ done |
 | 9     | On-demand enrichment (AI summaries)             | ✅ done |
 | 10    | Frontend UI — "Dispatch" broadsheet design      | ✅ done |
-| 11    | Auth + multi-user personalization               | ⬜ not started |
+| 11    | Auth + multi-user personalization               | 🔵 in progress |
 
 
 > Phase 4 (multi-source) was inserted ahead of clustering — clustering only does meaningful work once ≥2 sources exist. Later phases renumbered accordingly.
@@ -267,7 +267,7 @@ driven by a shared `PollProvider`); load-more pill. All API logic unchanged — 
 
 ---
 
-## Phase 11 — Auth + multi-user personalization ⬜ (NOT STARTED)
+## Phase 11 — Auth + multi-user personalization 🔵 (IN PROGRESS)
 
 Turn the app from single-tenant (one global taste profile) into multi-user: signup/login,
 and a personalized feed + interests **scoped per user**. The personalization engine
@@ -281,12 +281,12 @@ two per-person tables, (c) thread `userId` through the feed + vote logic.
 news is ingested once for everyone; only the *ranking* is personalized.
 
 **Phase 11.1 — Schema & migration (wipe approach)**
-- [ ] Auth.js Drizzle-adapter tables: `users`, `accounts`, `sessions`, `verification_tokens`;
+- [x] Auth.js Drizzle-adapter tables: `users`, `accounts`, `sessions`, `verification_tokens`;
       add `password_hash` to `users` (null for OAuth-only users)
-- [ ] `topic_interest`: PK `topic` → composite `(user_id, topic)`; `user_id` FK → `users` (`onDelete: cascade`)
-- [ ] `votes`: add `user_id` FK → `users` (`onDelete: cascade`) + unique `(user_id, article_id)`
-- [ ] Migration `TRUNCATE`s `votes` + `topic_interest`, adds columns/constraints as `NOT NULL` (no backfill)
-- [ ] `npm run db:generate` + `db:migrate`
+- [x] `topic_interest`: PK `topic` → composite `(user_id, topic)`; `user_id` FK → `users` (`onDelete: cascade`)
+- [x] `votes`: add `user_id` FK → `users` (`onDelete: cascade`) + unique `(user_id, article_id)`
+- [x] Migration `TRUNCATE`s `votes` + `topic_interest`, adds columns/constraints as `NOT NULL` (no backfill)
+- [ ] `npm run db:generate` + `db:migrate` (`db:generate` done; `db:migrate` intentionally not run from this branch because it wipes existing votes/interests)
 
 **Phase 11.2 — Auth.js wiring (email/password + OAuth)**
 - [ ] `next-auth@beta` (v5) + `@auth/drizzle-adapter` + `bcryptjs`
@@ -300,8 +300,8 @@ news is ingested once for everyone; only the *ranking* is personalized.
 - [ ] `Masthead`: signed-in user + sign-out (beside `ThemeToggle` / `PollButton`)
 
 **Phase 11.4 — Scope logic by user**
-- [ ] `getFeed(userId, …)` — filter the `votes` leftJoin and `loadInterest()` by `userId`
-- [ ] `castVote(userId, articleId, value)` — scope select/delete/insert + `topic_interest` upsert (now keyed `(user_id, topic)`)
+- [x] `getFeed(userId, …)` — filter the `votes` leftJoin and `loadInterest()` by `userId`
+- [x] `castVote(userId, articleId, value)` — scope select/delete/insert + `topic_interest` upsert (now keyed `(user_id, topic)`)
 - [ ] `/api/feed`, `/api/vote`, `/api/enrich` — read session → pass `userId`, 401 if unauthenticated;
       `page.tsx` + `actions.ts` read session server-side. `/api/poll` stays a global system endpoint.
 
@@ -315,4 +315,4 @@ news is ingested once for everyone; only the *ranking* is personalized.
 
 ---
 
-*Last updated: 2026-06-28 — Phase 11 added (auth + multi-user personalization plan: Auth.js email/password + OAuth, per-user `votes`/`topic_interest`, wipe-on-migration). Not started. Phases 1–10 done. 🎉*
+*Last updated: 2026-06-28 — Phase 11 started: schema/migration generated for Auth.js tables and per-user `votes`/`topic_interest`; feed/vote library logic now accepts `userId`. Auth.js providers, middleware, UI, session wiring, onboarding, and the destructive `db:migrate` step remain pending. Phases 1–10 done.*

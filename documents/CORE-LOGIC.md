@@ -13,9 +13,9 @@ WRITE PATH  (POST /api/poll, run by the daily cron)
   fetch sources → normalize → insert (dedup) → CLUSTER → TAG
         │
         ▼
-   [ Postgres:  articles · clusters · tags · topic_interest · votes ]
-        ▲                                        │
-        │ votes update topic_interest            ▼
+   [ Postgres:  articles · clusters · tags · users · topic_interest · votes ]
+        ▲                                                │
+        │ per-user votes update per-user interests       ▼
   POST /api/vote                          READ PATH (GET /api/feed, the page)
                                           collapse clusters → SCORE → diversify → page
 ```
@@ -30,8 +30,9 @@ clusters: that work was already done at poll time.
 | `articles` | one row per fetched article (title, url, summary, `cluster_id`, `detail_summary`, `enrichment_status`) | ingest / cluster / enrich |
 | `clusters` | one row per *story* (`representative_article_id`, `source_count`) | clustering |
 | `tags` | `(article_id, topic, score)` — an article's topics | tagging |
-| `topic_interest` | `(topic, score)` — how much **you** like each topic | voting |
-| `votes` | `(article_id, value)` — your 👍/👎 | voting |
+| `users` | Auth.js user records for login/signup/OAuth | auth |
+| `topic_interest` | `(user_id, topic, score)` — how much one user likes each topic | voting |
+| `votes` | `(user_id, article_id, value)` — one user's 👍/👎 | voting |
 
 ---
 
@@ -110,10 +111,11 @@ collapses these to one canonical label at write time, and the prompt forbids new
 
 ## 5. Voting → the learning loop  (`src/lib/vote.ts`)
 
-A vote teaches the app about **topics**, not just one article. `topic_interest.score` starts at **1
-(neutral)**; votes move it.
+A vote teaches the app about **topics**, not just one article. Phase 11 scopes votes and interest rows
+by `user_id`, so each account learns independently. `topic_interest.score` starts at **1 (neutral)**;
+votes move it.
 
-- **Toggle semantics:** voting the same way again clears it; the opposite flips it. We compute
+- **Toggle semantics:** one vote per `(user_id, article_id)`. Voting the same way again clears it; the opposite flips it. We compute
   `delta = newValue − oldValue` so re-voting reverses the old effect — no double counting.
 - For each of the article's tags:
 
@@ -163,8 +165,8 @@ round's penalties.
 > Note: the feed is *ordered* by `effective`, but the `score` field reports raw `base`. A bumped-down
 > second story can therefore appear lower than one with a smaller `score` — that's expected.
 
-With **no votes**, every interest is 1 → `interestScore` is 1 → ranking is just freshness + diversity
-(graceful "newest first").
+With **no votes for that user**, every interest is 1 → `interestScore` is 1 → ranking is just
+freshness + diversity (graceful "newest first").
 
 ---
 

@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { clampLimit, getFeed } from "@/lib/feed";
 
 /**
- * Read-back. Returns stored stories (clusters collapsed) newest-first. No
- * personalization yet — ranking arrives in Phase 8. Public (read-only).
+ * Read-back. Returns stored stories (clusters collapsed) ranked for the current
+ * user. Phase 11 auth wiring will pass a real user id; until then this route
+ * intentionally degrades to a neutral, unauthenticated feed.
  *
  * Query: `?limit=` (default 20, max 100), `?offset=` (for pagination).
  */
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
   const offset = Math.max(0, Math.trunc(Number(req.nextUrl.searchParams.get("offset")) || 0));
 
   try {
-    const rows = await getFeed(limit, offset);
+    const rows = await getFeed(null, limit, offset);
     return NextResponse.json({ ok: true, count: rows.length, articles: rows });
   } catch (err) {
     return NextResponse.json(

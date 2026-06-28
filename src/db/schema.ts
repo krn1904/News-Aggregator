@@ -1,8 +1,9 @@
 /**
- * Database schema — Phase 1.
- * Mirrors §10 of the design doc. The `body` / `detailSummary` /
- * `enrichmentStatus` columns are defined now but stay empty until the
- * Phase 8 enrichment step fills them for selected articles.
+ * Database schema.
+ *
+ * Shared news content (`articles`, `clusters`, `tags`) is global and ingested
+ * once for everyone. Phase 11 scopes the per-person state (`votes` and
+ * `topic_interest`) by Auth.js user so ranking and learning become multi-user.
  */
 import {
   pgTable,
@@ -13,7 +14,64 @@ import {
   timestamp,
   primaryKey,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
+
+// Auth.js adapter tables. Credentials users store a password hash; OAuth-only
+// users leave it null.
+export const users = pgTable("users", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text("name"),
+  email: text("email").unique(),
+  emailVerified: timestamp("email_verified", { withTimezone: true }),
+  image: text("image"),
+  passwordHash: text("password_hash"),
+});
+
+export const accounts = pgTable(
+  "accounts",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    provider: text("provider").notNull(),
+    providerAccountId: text("provider_account_id").notNull(),
+    refreshToken: text("refresh_token"),
+    accessToken: text("access_token"),
+    expiresAt: integer("expires_at"),
+    tokenType: text("token_type"),
+    scope: text("scope"),
+    idToken: text("id_token"),
+    sessionState: text("session_state"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.provider, t.providerAccountId] }),
+    index("idx_accounts_user").on(t.userId),
+  ]
+);
+
+export const sessions = pgTable(
+  "sessions",
+  {
+    sessionToken: text("session_token").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expires: timestamp("expires", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("idx_sessions_user").on(t.userId)]
+);
+
+export const verificationTokens = pgTable(
+  "verification_tokens",
+  {
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
+    expires: timestamp("expires", { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.identifier, t.token] })]
+);
 
 // A story can be carried by several sources; a cluster groups those duplicates.
 export const clusters = pgTable("clusters", {
@@ -67,23 +125,37 @@ export const tags = pgTable(
   (t) => [primaryKey({ columns: [t.articleId, t.topic] })]
 );
 
-// The learned profile: one interest score per topic (Phase 6).
-export const topicInterest = pgTable("topic_interest", {
-  topic: text("topic").primaryKey(),
-  score: real("score").notNull().default(1), // start equal
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+// The learned profile: one interest score per topic per user.
+export const topicInterest = pgTable(
+  "topic_interest",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    topic: text("topic").notNull(),
+    score: real("score").notNull().default(1), // start equal
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.topic] })]
+);
 
-// Thumbs up/down events that drive the learning loop (Phase 6).
+// Thumbs up/down events that drive the learning loop, one vote per user/article.
 export const votes = pgTable(
   "votes",
   {
     id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     articleId: integer("article_id")
       .notNull()
       .references(() => articles.id, { onDelete: "cascade" }),
     value: integer("value").notNull(), // +1 or -1
     votedAt: timestamp("voted_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("idx_votes_article").on(t.articleId)]
+  (t) => [
+    index("idx_votes_article").on(t.articleId),
+    index("idx_votes_user").on(t.userId),
+    uniqueIndex("uidx_votes_user_article").on(t.userId, t.articleId),
+  ]
 );
