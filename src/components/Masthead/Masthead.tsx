@@ -31,6 +31,7 @@ export default function Masthead() {
 
         <div className={styles.subbar}>
           <span>Your Feed · Personalized</span>
+          <span>Fresh stories fetched daily · 6:00 AM AEST</span>
           <span>{today}</span>
         </div>
       </div>
