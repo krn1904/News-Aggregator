@@ -276,9 +276,11 @@ Phases 6–8 — it's just global today. The work is (a) bolt on auth, (b) add `
 two per-person tables, (c) thread `userId` through the feed + vote logic.
 
 **Decisions (with Krn):** Auth.js (NextAuth v5) + Drizzle adapter, **both** email/password
-**and** OAuth. Existing global `votes` + `topic_interest` data is **wiped** on migration (clean
-`NOT NULL user_id`, no backfill). Shared content (`articles`, `clusters`, `tags`) stays global —
-news is ingested once for everyone; only the *ranking* is personalized.
+**and** OAuth. OAuth enables Google and GitHub when their env vars are present. Existing global
+`votes` + `topic_interest` data is **wiped** on migration (clean `NOT NULL user_id`, no backfill).
+Shared content (`articles`, `clusters`, `tags`) stays global — news is ingested once for everyone;
+only the *ranking* is personalized. Signup is open to all emails; usage limits for AI summaries are
+deferred to a later phase. The manual "Poll now" button is admin-only via `ADMIN_EMAILS`.
 
 **Phase 11.1 — Schema & migration (wipe approach)**
 - [x] Auth.js Drizzle-adapter tables: `users`, `accounts`, `sessions`, `verification_tokens`;
@@ -289,20 +291,20 @@ news is ingested once for everyone; only the *ranking* is personalized.
 - [ ] `npm run db:generate` + `db:migrate` (`db:generate` done; `db:migrate` intentionally not run from this branch because it wipes existing votes/interests)
 
 **Phase 11.2 — Auth.js wiring (email/password + OAuth)**
-- [ ] `next-auth@beta` (v5) + `@auth/drizzle-adapter` + `bcryptjs`
-- [ ] Credentials provider (signup hashes with bcrypt + inserts; sign-in verifies) — forces **JWT** sessions
-- [ ] OAuth provider(s) — TBD which (Google / GitHub / both); also uses JWT sessions (so `sessions` table unused — expected)
-- [ ] `middleware.ts` gating everything except `/login`, `/signup`, auth API routes, and `/api/poll`
+- [x] `next-auth@beta` (v5) + `@auth/drizzle-adapter` + `bcryptjs`
+- [x] Credentials provider (signup hashes with bcrypt + inserts; sign-in verifies) — forces **JWT** sessions
+- [x] OAuth provider(s): Google + GitHub when configured; also uses JWT sessions (so `sessions` table unused — expected)
+- [x] `middleware.ts` gating everything except `/login`, `/signup`, auth API routes, and `/api/poll`
 
 **Phase 11.3 — UI**
-- [ ] `/login` + `/signup` pages: email/password form **+** OAuth buttons
-- [ ] `(app)` route group for authed pages (the migration Phase 10 anticipated)
-- [ ] `Masthead`: signed-in user + sign-out (beside `ThemeToggle` / `PollButton`)
+- [x] `/login` + `/signup` pages: email/password form **+** OAuth buttons
+- [ ] `(app)` route group for authed pages (deferred; middleware gates the existing root page for now)
+- [x] `Masthead`: signed-in user + sign-out (beside `ThemeToggle` / admin-only `PollButton`)
 
 **Phase 11.4 — Scope logic by user**
 - [x] `getFeed(userId, …)` — filter the `votes` leftJoin and `loadInterest()` by `userId`
 - [x] `castVote(userId, articleId, value)` — scope select/delete/insert + `topic_interest` upsert (now keyed `(user_id, topic)`)
-- [ ] `/api/feed`, `/api/vote`, `/api/enrich` — read session → pass `userId`, 401 if unauthenticated;
+- [x] `/api/feed`, `/api/vote`, `/api/enrich` — read session → pass `userId`, 401 if unauthenticated;
       `page.tsx` + `actions.ts` read session server-side. `/api/poll` stays a global system endpoint.
 
 **Phase 11.5 — Onboarding interests**
@@ -310,9 +312,9 @@ news is ingested once for everyone; only the *ranking* is personalized.
       rows (e.g. score 1.5) so the first feed is personalized, not neutral
 - [ ] (Optional, later) settings page to edit interests
 
-**Open items to confirm before building:** which OAuth provider(s); fate of the manual
-"Poll now" button (keep for all / admin-only / remove from per-user UI).
+**Later DB hygiene:** add a retention/archive policy for old `articles`/`clusters`/`tags` once the app
+has enough real usage to choose a cutoff safely.
 
 ---
 
-*Last updated: 2026-06-28 — Phase 11 started: schema/migration generated for Auth.js tables and per-user `votes`/`topic_interest`; feed/vote library logic now accepts `userId`. Auth.js providers, middleware, UI, session wiring, onboarding, and the destructive `db:migrate` step remain pending. Phases 1–10 done.*
+*Last updated: 2026-06-28 — Phase 11 auth + per-user personalization wiring implemented through login/signup, Google/GitHub OAuth config, middleware, admin-only poll, and user-scoped feed/vote/session routes. Onboarding interests, `(app)` route group cleanup, destructive `db:migrate`, and later AI/DB usage limits remain pending. Phases 1–10 done.*

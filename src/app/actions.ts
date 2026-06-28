@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { ingestAllSources } from "@/lib/ingest";
+import { isAdminEmail } from "@/lib/admin";
+import { auth } from "../../auth";
 
 /**
  * "Poll now" server action for the feed page. Runs server-side, so it calls the
@@ -23,6 +25,11 @@ export type PollState =
 
 export async function pollNow(): Promise<PollState> {
   try {
+    const session = await auth();
+    if (!isAdminEmail(session?.user?.email)) {
+      return { status: "error", message: "Admin access required." };
+    }
+
     const { totals, clustering, tagging } = await ingestAllSources();
     revalidatePath("/");
     return {

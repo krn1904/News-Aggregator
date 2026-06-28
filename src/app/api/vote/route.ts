@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { castVote } from "@/lib/vote";
+import { auth } from "../../../../auth";
 
 /**
  * Phase 11. Records a thumbs up/down on an article and updates topic interest
@@ -12,9 +13,8 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    // Auth.js session lookup lands in Phase 11.2/11.4. The database and
-    // learning loop are already user-scoped, so anonymous writes must stop here.
-    const userId: string | null = null;
+    const session = await auth();
+    const userId = session?.user?.id ?? null;
     if (!userId) {
       return NextResponse.json({ ok: false, error: "Authentication required" }, { status: 401 });
     }

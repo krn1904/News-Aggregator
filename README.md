@@ -59,6 +59,10 @@ See `[documents/CORE-LOGIC.md](documents/CORE-LOGIC.md)` for the formulas and a 
 | ---------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`   | `.env.local` + Vercel                             | Neon **pooled** connection string                                                                                      |
 | `POLL_SECRET`    | `.env.local` + Vercel + **GitHub Actions secret** | Bearer secret guarding `/api/poll`                                                                                     |
+| `AUTH_SECRET`    | `.env.local` + Vercel                             | Auth.js session/JWT secret                                                                                             |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | `.env.local` + Vercel          | Optional Google OAuth login                                                                                            |
+| `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | `.env.local` + Vercel          | Optional GitHub OAuth login                                                                                            |
+| `ADMIN_EMAILS`   | `.env.local` + Vercel                             | Comma-separated emails allowed to use the manual **Poll now** button                                                   |
 | `GEMINI_API_KEY` | `.env.local` + Vercel (**not** GitHub)            | AI tagging (Phase 6) + summaries (Phase 9). Without it, tagging falls back to keyword-only and summaries are disabled. |
 | `APP_URL`        | **GitHub Actions secret**                         | Deployed URL the cron polls (no trailing slash)                                                                        |
 | `GEMINI_MODEL`   | optional                                          | Override the model (defaults to `gemini-2.5-flash`)                                                                    |
