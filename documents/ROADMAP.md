@@ -262,6 +262,8 @@ pure recency + diversity (≈ the old behaviour). As you vote, upvoted topics fl
 
 ## Phase 9 — On-demand enrichment (AI summaries) ✅ (DONE)
 
+- [x] **Shared summary cache feature:** summaries are stored once per article and reused across users,
+      avoiding duplicate AI calls when multiple users summarize the same story.
 - [x] `src/lib/enrich.ts` `enrichArticle(id)` — **cache-first**: returns stored `detailSummary` if
   ```
   already `enriched`; otherwise calls Gemini, stores it, sets `enrichmentStatus`.
@@ -278,10 +280,15 @@ pure recency + diversity (≈ the old behaviour). As you vote, upvoted topics fl
   ```
   show/hide toggle (`src/app/Summary.tsx`), no re-call.
   ```
+- [x] Summary cache is **shared across users** because `detail_summary` lives on the global `articles`
+  row, not a per-user table. If one user summarizes an article, other signed-in users can fetch the
+  cached summary directly without another Gemini call.
 
 **Notes:** reuses `GEMINI_API_KEY` (Phase 6). `body` column stays empty — URL-context doesn't return raw
 text; Jina Reader could capture full body later if needed. Paywalled sites can't be read → graceful
-"failed" → link only. `maxDuration=60` on the route (Gemini fetch+read can be slow).
+"failed" → link only. `maxDuration=60` on the route (Gemini fetch+read can be slow). Phase 11 auth
+requires a signed-in user to request enrichment, but the summary itself remains a shared article-level
+cache to avoid unnecessary duplicate AI calls.
 
 ---
 
