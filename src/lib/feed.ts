@@ -1,4 +1,4 @@
-import { desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { articles, tags, topicInterest, votes } from "@/db/schema";
 
@@ -63,18 +63,38 @@ type ScoredStory = { story: Story; score: number; topics: string[] };
 const timeMs = (a: ArticleRow): number => (a.publishedAt ?? a.fetchedAt).getTime();
 
 export async function getFeed(
+  userId: string | null,
   limit: number = DEFAULT_LIMIT,
   offset: number = 0
 ): Promise<FeedStory[]> {
-  const recent = await fetchRecentArticles();
+  const recent = await fetchRecentArticles(userId);
   const stories = collapseIntoStories(recent);
-  const scored = await scoreStories(stories);
+  const scored = await scoreStories(userId, stories);
   const ranked = orderByInterestAndDiversity(scored);
   return ranked.slice(offset, offset + limit).map(toFeedStory);
 }
 
 /** Step 1 — the most recent articles, each with the current user's vote. */
-async function fetchRecentArticles(): Promise<ArticleRow[]> {
+async function fetchRecentArticles(userId: string | null): Promise<ArticleRow[]> {
+  if (!userId) {
+    return db
+      .select({
+        id: articles.id,
+        clusterId: articles.clusterId,
+        source: articles.source,
+        title: articles.title,
+        canonicalUrl: articles.canonicalUrl,
+        summary: articles.summary,
+        publishedAt: articles.publishedAt,
+        fetchedAt: articles.fetchedAt,
+        userVote: sql<number | null>`NULL`,
+        detailSummary: articles.detailSummary,
+      })
+      .from(articles)
+      .orderBy(sql`${articles.publishedAt} DESC NULLS LAST`, desc(articles.fetchedAt))
+      .limit(COLLAPSE_WINDOW);
+  }
+
   return db
     .select({
       id: articles.id,
@@ -89,7 +109,7 @@ async function fetchRecentArticles(): Promise<ArticleRow[]> {
       detailSummary: articles.detailSummary,
     })
     .from(articles)
-    .leftJoin(votes, eq(votes.articleId, articles.id))
+    .leftJoin(votes, and(eq(votes.articleId, articles.id), eq(votes.userId, userId)))
     .orderBy(sql`${articles.publishedAt} DESC NULLS LAST`, desc(articles.fetchedAt))
     .limit(COLLAPSE_WINDOW);
 }
@@ -118,9 +138,9 @@ function collapseIntoStories(rows: ArticleRow[]): Story[] {
 }
 
 /** Step 3 — score every story: how much you like its topics × how fresh it is. */
-async function scoreStories(stories: Story[]): Promise<ScoredStory[]> {
+async function scoreStories(userId: string | null, stories: Story[]): Promise<ScoredStory[]> {
   const tagsByArticle = await loadTags(stories.map((s) => s.rep.id));
-  const interest = await loadInterest();
+  const interest = await loadInterest(userId);
   const now = Date.now();
 
   return stories.map((story) => {
@@ -236,9 +256,12 @@ async function loadTags(
 }
 
 /** Load the reader's interest profile as topic → score. */
-async function loadInterest(): Promise<Map<string, number>> {
+async function loadInterest(userId: string | null): Promise<Map<string, number>> {
+  if (!userId) return new Map();
+
   const rows = await db
     .select({ topic: topicInterest.topic, score: topicInterest.score })
-    .from(topicInterest);
+    .from(topicInterest)
+    .where(eq(topicInterest.userId, userId));
   return new Map(rows.map((r) => [r.topic, r.score]));
 }

@@ -17,7 +17,7 @@ export default async function Home() {
   let error: string | null = null;
 
   try {
-    stories = await getFeed(FIRST_PAGE, 0);
+    stories = await getFeed(null, FIRST_PAGE, 0);
   } catch (err) {
     error = err instanceof Error ? err.message : String(err);
   }

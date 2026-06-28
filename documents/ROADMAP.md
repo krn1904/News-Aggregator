@@ -25,6 +25,7 @@ Phases are reconstructed from the schema comments in `src/db/schema.ts` (the ori
 | 8     | Personalized ranking in `/api/feed`             | ✅ done |
 | 9     | On-demand enrichment (AI summaries)             | ✅ done |
 | 10    | Frontend UI — "Dispatch" broadsheet design      | ✅ done |
+| 11    | Auth + multi-user personalization               | 🔵 in progress |
 
 
 > Phase 4 (multi-source) was inserted ahead of clustering — clustering only does meaningful work once ≥2 sources exist. Later phases renumbered accordingly.
@@ -266,4 +267,52 @@ driven by a shared `PollProvider`); load-more pill. All API logic unchanged — 
 
 ---
 
-*Last updated: 2026-06-27 — Phase 10 complete ("Dispatch" broadsheet UI: tokens + CSS Modules + theming + masthead + restyled feed/vote/summary + empty/polling states). All 10 phases done. 🎉*
+## Phase 11 — Auth + multi-user personalization 🔵 (IN PROGRESS)
+
+Turn the app from single-tenant (one global taste profile) into multi-user: signup/login,
+and a personalized feed + interests **scoped per user**. The personalization engine
+(tagging, interest scoring, freshness/diversity ranking, learning loop) is **already built** in
+Phases 6–8 — it's just global today. The work is (a) bolt on auth, (b) add `user_id` to the
+two per-person tables, (c) thread `userId` through the feed + vote logic.
+
+**Decisions (with Krn):** Auth.js (NextAuth v5) + Drizzle adapter, **both** email/password
+**and** OAuth. Existing global `votes` + `topic_interest` data is **wiped** on migration (clean
+`NOT NULL user_id`, no backfill). Shared content (`articles`, `clusters`, `tags`) stays global —
+news is ingested once for everyone; only the *ranking* is personalized.
+
+**Phase 11.1 — Schema & migration (wipe approach)**
+- [x] Auth.js Drizzle-adapter tables: `users`, `accounts`, `sessions`, `verification_tokens`;
+      add `password_hash` to `users` (null for OAuth-only users)
+- [x] `topic_interest`: PK `topic` → composite `(user_id, topic)`; `user_id` FK → `users` (`onDelete: cascade`)
+- [x] `votes`: add `user_id` FK → `users` (`onDelete: cascade`) + unique `(user_id, article_id)`
+- [x] Migration `TRUNCATE`s `votes` + `topic_interest`, adds columns/constraints as `NOT NULL` (no backfill)
+- [ ] `npm run db:generate` + `db:migrate` (`db:generate` done; `db:migrate` intentionally not run from this branch because it wipes existing votes/interests)
+
+**Phase 11.2 — Auth.js wiring (email/password + OAuth)**
+- [ ] `next-auth@beta` (v5) + `@auth/drizzle-adapter` + `bcryptjs`
+- [ ] Credentials provider (signup hashes with bcrypt + inserts; sign-in verifies) — forces **JWT** sessions
+- [ ] OAuth provider(s) — TBD which (Google / GitHub / both); also uses JWT sessions (so `sessions` table unused — expected)
+- [ ] `middleware.ts` gating everything except `/login`, `/signup`, auth API routes, and `/api/poll`
+
+**Phase 11.3 — UI**
+- [ ] `/login` + `/signup` pages: email/password form **+** OAuth buttons
+- [ ] `(app)` route group for authed pages (the migration Phase 10 anticipated)
+- [ ] `Masthead`: signed-in user + sign-out (beside `ThemeToggle` / `PollButton`)
+
+**Phase 11.4 — Scope logic by user**
+- [x] `getFeed(userId, …)` — filter the `votes` leftJoin and `loadInterest()` by `userId`
+- [x] `castVote(userId, articleId, value)` — scope select/delete/insert + `topic_interest` upsert (now keyed `(user_id, topic)`)
+- [ ] `/api/feed`, `/api/vote`, `/api/enrich` — read session → pass `userId`, 401 if unauthenticated;
+      `page.tsx` + `actions.ts` read session server-side. `/api/poll` stays a global system endpoint.
+
+**Phase 11.5 — Onboarding interests**
+- [ ] Post-signup interest picker (topics from the `src/lib/tags/` taxonomy) → seed `topic_interest`
+      rows (e.g. score 1.5) so the first feed is personalized, not neutral
+- [ ] (Optional, later) settings page to edit interests
+
+**Open items to confirm before building:** which OAuth provider(s); fate of the manual
+"Poll now" button (keep for all / admin-only / remove from per-user UI).
+
+---
+
+*Last updated: 2026-06-28 — Phase 11 started: schema/migration generated for Auth.js tables and per-user `votes`/`topic_interest`; feed/vote library logic now accepts `userId`. Auth.js providers, middleware, UI, session wiring, onboarding, and the destructive `db:migrate` step remain pending. Phases 1–10 done.*
