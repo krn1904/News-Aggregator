@@ -74,6 +74,8 @@
 .oauth {
   background: transparent;
   color: var(--ink);
+  width: 100%;
+  text-align: center;
 }
 
 .button:hover,
@@ -82,10 +84,23 @@
 }
 
 .oauthGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
-  margin-top: 18px;
+  justify-content: center;
+}
+
+.oauthGrid form {
+  display: block;
+  flex: 1 1 calc(50% - 5px);
+  max-width: calc(50% - 5px);
+  min-width: min(100%, 160px);
+  margin: 0;
+}
+
+.oauthGrid form:only-child {
+  flex: 0 1 280px;
+  max-width: 100%;
 }
 
 .divider {

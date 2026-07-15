@@ -3,11 +3,18 @@ import { redirect } from "next/navigation";
 import { auth } from "../../../../auth";
 import AuthForm from "@/components/Auth/AuthForm";
 import { loginWithCredentials, signInWithGitHub, signInWithGoogle } from "@/lib/auth-actions";
+import { authErrorMessage } from "@/lib/auth-errors";
 import styles from "../auth.module.css";
 
-export default async function LoginPage() {
+type Props = {
+  searchParams: Promise<{ error?: string }>;
+};
+
+export default async function LoginPage({ searchParams }: Props) {
   const session = await auth();
   if (session?.user) redirect("/");
+  const { error } = await searchParams;
+  const oauthError = authErrorMessage(error);
   const googleEnabled = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
   const githubEnabled = Boolean(process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET);
   const hasOAuth = googleEnabled || githubEnabled;
@@ -17,6 +24,8 @@ export default async function LoginPage() {
       <div className={styles.panel}>
         <h2 className={styles.title}>Sign in</h2>
         <p className={styles.dek}>Read your personalized edition.</p>
+
+        {oauthError && <p className={styles.error}>{oauthError}</p>}
 
         <AuthForm mode="login" action={loginWithCredentials} />
 

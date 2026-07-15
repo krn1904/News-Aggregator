@@ -8,36 +8,35 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { accounts, sessions, users, verificationTokens } from "@/db/schema";
 import { isAdminEmail } from "@/lib/admin";
+import { authConfig } from "./auth.config";
 
 function configuredOAuthProviders() {
   const providers = [];
 
+  // Google/GitHub verify email ownership, so linking OAuth to an existing
+  // credentials account with the same email is safe for this app.
+  const linkByEmail = { allowDangerousEmailAccountLinking: true as const };
+
   if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
-    providers.push(Google);
+    providers.push(Google(linkByEmail));
   }
 
   if (process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET) {
-    providers.push(GitHub);
+    providers.push(GitHub(linkByEmail));
   }
 
   return providers;
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   secret: process.env.AUTH_SECRET,
-  // The production app sits behind Vercel/custom-domain proxy headers.
-  // Auth.js can infer this on Vercel, but setting it explicitly avoids
-  // `UntrustedHost` configuration errors on custom domains.
-  trustHost: true,
   adapter: DrizzleAdapter(db, {
     usersTable: users,
     accountsTable: accounts,
     sessionsTable: sessions,
     verificationTokensTable: verificationTokens,
   }),
-  pages: {
-    signIn: "/login",
-  },
   session: {
     strategy: "jwt",
   },
@@ -75,16 +74,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    ...authConfig.callbacks,
     jwt({ token, user }) {
       if (user?.id) token.id = user.id;
-      if (user?.email) token.isAdmin = isAdminEmail(user.email);
+      if (user?.email) {
+        token.email = user.email;
+        token.isAdmin = isAdminEmail(user.email);
+      }
+      if (user?.name) token.name = user.name;
+      if (user?.image) token.picture = user.image;
       return token;
     },
     session({ session, token }) {
-      if (session.user && typeof token.id === "string") {
-        session.user.id = token.id;
-      }
       if (session.user) {
+        if (typeof token.id === "string") session.user.id = token.id;
+        if (typeof token.email === "string") session.user.email = token.email;
+        if (typeof token.name === "string") session.user.name = token.name;
+        if (typeof token.picture === "string") session.user.image = token.picture;
         session.user.isAdmin = Boolean(token.isAdmin);
       }
       return session;

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getFeed, type FeedStory } from "@/lib/feed";
 import Feed from "@/components/Feed/Feed";
 import EmptyState from "@/components/EmptyState/EmptyState";
@@ -17,7 +18,8 @@ export default async function Home() {
   let stories: FeedStory[] = [];
   let error: string | null = null;
   const session = await auth();
-  const userId = session?.user?.id ?? null;
+  const userId = session?.user?.id;
+  if (!userId) redirect("/login");
 
   try {
     stories = await getFeed(userId, FIRST_PAGE, 0);

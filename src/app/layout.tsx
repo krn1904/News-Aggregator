@@ -23,13 +23,15 @@ export const metadata: Metadata = {
   description: "Personalized, multi-source, self-learning news.",
 };
 
+export const dynamic = "force-dynamic";
+
 // Runs before paint: set the theme from localStorage / OS preference so there's
 // no light-then-dark flash on load. Mirrors the key ThemeToggle writes.
 const themeScript = `(function(){try{var t=localStorage.getItem('brief-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='light';}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${serif.variable} ${mono.variable}`}>
+    <html lang="en" className={`${serif.variable} ${mono.variable}`} suppressHydrationWarning>
       <body>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <PollProvider>

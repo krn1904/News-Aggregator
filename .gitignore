@@ -2,6 +2,7 @@ node_modules
 .next
 .env
 .env.local
+Google_OauthConfiguratation.json
 .DS_Store
 *.tsbuildinfo
 next-env.d.ts
