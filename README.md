@@ -65,8 +65,8 @@ See `[documents/CORE-LOGIC.md](documents/CORE-LOGIC.md)` for the formulas and a 
 | `DATABASE_URL`   | `.env.local` + Vercel                             | Neon **pooled** connection string                                                                                      |
 | `POLL_SECRET`    | `.env.local` + Vercel + **GitHub Actions secret** | Bearer secret guarding `/api/poll`                                                                                     |
 | `AUTH_SECRET`    | `.env.local` + Vercel                             | Auth.js session/JWT secret                                                                                             |
-| `AUTH_URL`       | `.env.local` + Vercel                             | Canonical deployed URL for Auth.js, e.g. `https://brief.karansoni.live`                                                |
-| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | `.env.local` + Vercel          | Optional Google OAuth login                                                                                            |
+| `AUTH_URL`       | `.env.local` (local) + Vercel (prod)              | **Must match the URL you open in the browser.** Local: `http://localhost:3000`. Production: `https://brief.karansoni.live`. Wrong value breaks OAuth redirects. |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | `.env.local` + Vercel          | Optional Google OAuth. Callback: `http://localhost:3000/api/auth/callback/google` (local) and `https://brief.karansoni.live/api/auth/callback/google` (prod) in Google Cloud Console |
 | `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | `.env.local` + Vercel          | Optional GitHub OAuth login. Callback URL: `/api/auth/callback/github` on the deployed domain                          |
 | `ADMIN_EMAILS`   | `.env.local` + Vercel                             | Comma-separated emails allowed to use the manual **Poll now** button                                                   |
 | `GEMINI_API_KEY` | `.env.local` + Vercel (**not** GitHub)            | AI tagging (Phase 6) + summaries (Phase 9). Without it, tagging falls back to keyword-only and summaries are disabled. |

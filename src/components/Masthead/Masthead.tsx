@@ -7,8 +7,10 @@ import { isAdminEmail } from "@/lib/admin";
 /** The editorial masthead: wordmark + tagline, theme/poll controls, dated sub-bar. */
 export default async function Masthead() {
   const session = await auth();
-  const email = session?.user?.email ?? null;
-  const isAdmin = isAdminEmail(email);
+  const user = session?.user;
+  const isLoggedIn = Boolean(user?.id);
+  const accountLabel = user?.email ?? user?.name ?? null;
+  const isAdmin = isAdminEmail(user?.email ?? null);
   const today = new Date()
     .toLocaleDateString("en-AU", {
       weekday: "long",
@@ -27,9 +29,9 @@ export default async function Masthead() {
             <p className={styles.tagline}>your feed, learned one read at a time</p>
           </div>
           <div className={styles.actions}>
-            {email && (
+            {isLoggedIn && (
               <div className={styles.account}>
-                <span className={styles.email}>{email}</span>
+                {accountLabel && <span className={styles.email}>{accountLabel}</span>}
                 <form
                   action={async () => {
                     "use server";
