@@ -18,10 +18,8 @@ name: Scheduled poll
 on:
   schedule:
     # GitHub cron is ALWAYS UTC and does not adjust for daylight saving.
-    # 20:00 UTC = 06:00 Melbourne (AEST, UTC+10).
-    # During Melbourne daylight saving (AEDT, UTC+11, ~Oct–Apr) this lands at 07:00 —
-    # switch to "0 19 * * *" for those months if you need it exactly at 06:00.
-    - cron: "0 20 * * *"
+    # Every 4 hours on the hour (00:00, 04:00, 08:00, 12:00, 16:00, 20:00 UTC).
+    - cron: "0 */4 * * *"
   workflow_dispatch: {} # allow manual runs from the Actions tab
 
 # We only call an external URL — no repo write access needed.
