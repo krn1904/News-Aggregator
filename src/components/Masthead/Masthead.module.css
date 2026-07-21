@@ -49,6 +49,21 @@
   font-family: var(--font-sans);
 }
 
+.navLink {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.navLink:hover {
+  color: var(--accent);
+}
+
 .email {
   max-width: 220px;
   overflow: hidden;
