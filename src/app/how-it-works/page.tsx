@@ -18,13 +18,13 @@ export default function HowItWorks() {
     <article className={styles.page}>
       <header className={styles.head}>
         <p className={styles.kicker}>How it works</p>
-        <h1 className={styles.title}>From a thousand headlines to your front page</h1>
+        <h1 className={styles.title}>How Brief builds your feed</h1>
         <p className={styles.lede}>
-          Brief reads the same news firehose you would — dozens of outlets, hundreds of stories a day —
-          and quietly does the tedious part: throwing out duplicates, working out what each story is
-          about, and learning what <em>you</em> keep reading. What&rsquo;s left is one clean, ranked
-          page. Here&rsquo;s the whole journey, from raw headline to your feed. Expand{" "}
-          <span className={styles.inlineHood}>Under the hood</span> on any step for the real numbers.
+          Every day dozens of sources put out hundreds of stories. Brief&rsquo;s whole job is to turn
+          that pile into a feed that&rsquo;s actually yours: it clears out the duplicates, works out what
+          each story is about, and learns a little more about your taste every time you vote. Here&rsquo;s
+          the full path one story takes to reach you, step by step. Want the real numbers behind a step?
+          Open its <span className={styles.inlineHood}>Under the hood</span>.
         </p>
         <Link href="/" className={styles.back}>
           &larr; Back to your feed
