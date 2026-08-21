@@ -42,7 +42,7 @@ export default function HowItWorks() {
 
         <div className={styles.diagram} aria-hidden="true">
           <div className={styles.lane}>
-            <span className={styles.laneTag}>Write path — nightly</span>
+            <span className={styles.laneTag}>Write path — every few hours</span>
             <div className={styles.flow}>
               <span className={styles.node}>Fetch</span>
               <span className={styles.arrow}>→</span>
@@ -86,13 +86,13 @@ export default function HowItWorks() {
           <div className={styles.stepBody}>
             <h2 className={styles.stepTitle}>Fetch the news</h2>
             <p className={styles.stepText}>
-              Once a day, Brief visits every source it follows — Hacker News and a set of RSS feeds —
+              Several times a day, Brief visits every source it follows — Hacker News and a set of RSS feeds —
               and pulls down whatever&rsquo;s new. Each source has its own little adapter, but they all
               hand back the same tidy shape, so nothing downstream has to care where a story came from.
             </p>
             <p className={styles.analogy}>
               <span className={styles.analogyTag}>Like</span> a clipping service that checks every
-              newspaper each morning and drops the cuttings in one basket — and if one paper doesn&rsquo;t
+              newspaper through the day and drops the cuttings in one basket — and if one paper doesn&rsquo;t
               show up, the others still get read.
             </p>
             <details className={styles.hood}>
