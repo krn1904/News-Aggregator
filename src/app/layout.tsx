@@ -5,6 +5,7 @@ import "./globals.css";
 import styles from "./layout.module.css";
 import PollProvider from "@/components/PollProvider/PollProvider";
 import Masthead from "@/components/Masthead/Masthead";
+import { Analytics } from "@vercel/analytics/next";
 
 const serif = Newsreader({
   subsets: ["latin"],
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Masthead />
           <main className={styles.main}>{children}</main>
         </PollProvider>
+        <Analytics />
       </body>
     </html>
   );
