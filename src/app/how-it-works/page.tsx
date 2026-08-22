@@ -17,6 +17,9 @@ export default function HowItWorks() {
   return (
     <article className={styles.page}>
       <header className={styles.head}>
+        <Link href="/" className={styles.back}>
+          &larr; Back to your feed
+        </Link>
         <p className={styles.kicker}>How it works</p>
         <h1 className={styles.title}>How Brief builds your feed</h1>
         <p className={styles.lede}>
@@ -26,9 +29,6 @@ export default function HowItWorks() {
           the full path one story takes to reach you, step by step. Want the real numbers behind a step?
           Open its <span className={styles.inlineHood}>Under the hood</span>.
         </p>
-        <Link href="/" className={styles.back}>
-          &larr; Back to your feed
-        </Link>
       </header>
 
       <section className={styles.overview}>

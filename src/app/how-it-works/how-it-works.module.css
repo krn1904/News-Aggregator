@@ -61,7 +61,7 @@
 
 .back {
   display: inline-block;
-  margin-top: 24px;
+  margin-bottom: 24px;
   font-family: var(--font-sans);
   font-size: 11px;
   text-transform: uppercase;
