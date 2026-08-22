@@ -1,3 +1,4 @@
+import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle/ThemeToggle";
 import PollButton from "@/components/PollButton/PollButton";
 import styles from "./Masthead.module.css";
@@ -44,6 +45,9 @@ export default async function Masthead() {
                 </form>
               </div>
             )}
+            <Link href="/how-it-works" className={styles.navLink}>
+              How it works
+            </Link>
             <ThemeToggle />
             {isAdmin && <PollButton />}
           </div>

@@ -54,6 +54,9 @@ export default async function LoginPage({ searchParams }: Props) {
         <p className={styles.switch}>
           New here? <Link href="/signup">Create an account</Link>
         </p>
+        <p className={styles.learn}>
+          <Link href="/how-it-works">How Brief works &rarr;</Link>
+        </p>
       </div>
     </section>
   );

@@ -1,6 +1,6 @@
 import type { NextAuthConfig } from "next-auth";
 
-export const PUBLIC_PATHS = ["/login", "/signup", "/api/auth", "/api/poll", "/api/health"];
+export const PUBLIC_PATHS = ["/login", "/signup", "/how-it-works", "/api/auth", "/api/poll", "/api/health"];
 
 export const authConfig = {
   pages: {
